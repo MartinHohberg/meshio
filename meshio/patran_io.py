@@ -308,9 +308,10 @@ def _read_cell(f):
 
 
 def _scan_cells(point_gids, cells):
-    for arr in cells.values():
-        for value in numpy.nditer(arr, op_flags=["readwrite"]):
-            value[...] = numpy.flatnonzero(point_gids == value)[0]
+    lookup_table = dict(zip(point_gids, numpy.arange(0, len(point_gids))))
+    for elem_type in cells.keys():
+        vect_lookup = numpy.vectorize(lookup_table.get)
+        cells[elem_type] = vect_lookup(cells[elem_type])
     return cells
 
 
