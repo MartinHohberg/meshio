@@ -421,7 +421,7 @@ def write(filename, mesh, write_binary=True, encoding="utf-8"):
         )
 
     if not write_binary:
-        logging.warning("VTK ASCII files are only meant for debugging.")
+        logging.warning("VTK ASCII files are slow and only for debugging.")
 
     if not write_binary:
         with open(filename, "w") as f:
