@@ -89,6 +89,7 @@ def read(
 
     if autoremove:
         mesh.prune()
+        mesh.prune_nan()
 
     return mesh
 

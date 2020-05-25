@@ -31,14 +31,20 @@ class Mesh(object):
             lines.append("  {}: {}".format(tpe, len(elems)))
 
         if self.node_sets:
-            lines.append("Node sets: {}".format(", ".join(self.node_sets.keys())))
+            lines.append(
+                "Node sets: {}".format(", ".join(self.node_sets.keys()))
+            )
 
         if self.point_data:
-            lines.append("Point data: {}".format(", ".join(self.point_data.keys())))
+            lines.append(
+                "Point data: {}".format(", ".join(self.point_data.keys()))
+            )
 
         cell_data_keys = set()
         for cell_type in self.cell_data:
-            cell_data_keys = cell_data_keys.union(self.cell_data[cell_type].keys())
+            cell_data_keys = cell_data_keys.union(
+                self.cell_data[cell_type].keys()
+            )
         if cell_data_keys:
             lines.append("Cell data: {}".format(", ".join(cell_data_keys)))
 
@@ -71,7 +77,9 @@ class Mesh(object):
         all_cells_flat = numpy.concatenate(
             [vals for vals in self.cells.values()]
         ).flatten()
-        orphaned_nodes = numpy.setdiff1d(numpy.arange(len(self.points)), all_cells_flat)
+        orphaned_nodes = numpy.setdiff1d(
+            numpy.arange(len(self.points)), all_cells_flat
+        )
         self.points = numpy.delete(self.points, orphaned_nodes, axis=0)
         # also adapt the point data
         for key in self.point_data:
@@ -81,7 +89,9 @@ class Mesh(object):
 
         # reset GLOBAL_ID
         if "GLOBAL_ID" in self.point_data:
-            self.point_data["GLOBAL_ID"] = numpy.arange(1, len(self.points) + 1)
+            self.point_data["GLOBAL_ID"] = numpy.arange(
+                1, len(self.points) + 1
+            )
 
         # We now need to adapt the cells too.
         diff = numpy.zeros(len(all_cells_flat), dtype=all_cells_flat.dtype)
@@ -96,12 +106,26 @@ class Mesh(object):
             k += n
         return
 
+    def prune_nan(self):
+        for cell_type in self.cell_data.keys():
+            for data_type in self.cell_data[cell_type].keys():
+                nan = numpy.isnan(self.cell_data[cell_type][data_type])
+                mask = ~nan.any(axis=1)
+                self.cells[cell_type] = self.cells[cell_type][mask]
+                cell_data_arr = numpy.array(
+                    self.cell_data[cell_type][data_type]
+                )
+                masked_cell_data_arr = cell_data_arr[mask]
+                self.cell_data[cell_type][
+                    data_type
+                ] = masked_cell_data_arr.tolist()
+
     def transform(self, transformation_matrix):
         # transform node coordinates
         homgenous_points = numpy.c_[self.points, numpy.ones(len(self.points))]
-        self.points = numpy.einsum('ij,kj -> ki',
-                                    transformation_matrix,
-                                    homgenous_points)[:,:3]
+        self.points = numpy.einsum(
+            "ij,kj -> ki", transformation_matrix, homgenous_points
+        )[:, :3]
 
         # transform node fields
         for field_name, field_values in self.point_data.items():
@@ -110,14 +134,12 @@ class Mesh(object):
             elif len(field_values.shape) == 2:  # VECTOR
                 # get rotation
                 R = transformation_matrix[:3, :3]
-                rvf = numpy.einsum('ij, kj -> ki',
-                                    R, field_values)
+                rvf = numpy.einsum("ij, kj -> ki", R, field_values)
                 self.point_data.update({field_name: rvf})
-            elif len(field_values.shape) == 3:   # TENSOR
+            elif len(field_values.shape) == 3:  # TENSOR
                 # get rotation
                 R = transformation_matrix[:3, :3]
-                rtf = numpy.einsum('ij, kjm, nm -> kin',
-                                   R, field_values, R)
+                rtf = numpy.einsum("ij, kjm, nm -> kin", R, field_values, R)
                 self.point_data.update({field_name: rtf})
 
         # transform cell fields
@@ -128,19 +150,19 @@ class Mesh(object):
                 elif len(field_values.shape) == 2:  # VECTOR
                     # get rotation
                     R = transformation_matrix[:3, :3]
-                    rvf = numpy.einsum('ij, kj -> ki',
-                                        R, field_values)
+                    rvf = numpy.einsum("ij, kj -> ki", R, field_values)
                     cf_dict.update({field_name: rvf})
-                elif len(field_values.shape) == 3:   # TENSOR
+                elif len(field_values.shape) == 3:  # TENSOR
                     # get rotation
                     R = transformation_matrix[:3, :3]
-                    rtf = numpy.einsum('ij, kjm, nm -> kin',
-                                       R, field_values, R)
+                    rtf = numpy.einsum(
+                        "ij, kjm, nm -> kin", R, field_values, R
+                    )
                     cf_dict.update({field_name: rtf})
-
 
     def merge(self, other):
         from copy import deepcopy as dc
+
         points1 = dc(self.points)
         cells1 = dc(self.cells)
         point_data1 = dc(self.point_data)
@@ -178,7 +200,7 @@ class Mesh(object):
             if etype2 not in etypes1:
                 merged_cells.update({etype2: cells2[etype2]})
 
-         # merge point_data
+        # merge point_data
         merged_point_data = {}
         assert point_data1.keys() == point_data2.keys()
         for field_name in point_data1.keys():
