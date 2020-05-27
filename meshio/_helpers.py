@@ -34,7 +34,7 @@ def _filetype_from_path(path):
     return out
 
 
-def read(filename, file_format=None):
+def read(filename, file_format=None, **kwargs):
     """Reads an unstructured mesh with added data.
 
     :param filenames: The files/PathLikes to read from.
@@ -65,7 +65,7 @@ def read(filename, file_format=None):
     if file_format not in reader_map:
         raise ReadError(msg)
 
-    return reader_map[file_format](filename)
+    return reader_map[file_format](filename, **kwargs)
 
 
 def write_points_cells(
