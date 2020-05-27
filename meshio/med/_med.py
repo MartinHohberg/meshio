@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 I/O for MED/Salome, cf.
 <https://docs.salome-platform.org/latest/dev/MEDCoupling/developer/med-file.html>.

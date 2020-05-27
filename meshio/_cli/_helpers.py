@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import sys
 
 from ..__about__ import __version__
