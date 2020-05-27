@@ -16,6 +16,7 @@ caas/sfdcarticles/sfdcarticles/How-to-export-fiber-orientation-results
 """
 
 import os
+import pathlib
 
 import numpy
 
@@ -38,12 +39,7 @@ meshio_to_pat_type = {v: k for k, v in pat_to_meshio_type.items()}
 
 
 def read(
-    filename,
-    ele_filename=None,
-    nod_filename=None,
-    xml_filename=None,
-    scale=1.0,
-    autoremove=True,
+    filename, ele_filename=None, nod_filename=None, xml_filename=None, scale=1.0,
 ):
     """Read a Patran *.pat file.
 
@@ -75,25 +71,30 @@ def read(
         mesh, element_gids, point_gids = read_pat_buffer(f, scale)
 
     # if *.ele file is present: Add cell data
-    ele_filename = ele_filename or filename.replace(".pat", ".ele")
-    if os.path.isfile(ele_filename):
-        with open(ele_filename, "r") as f:
-            mesh = read_ele_buffer(f, mesh, element_gids)
+    if ele_filename:
+        ele_path = pathlib.Path(ele_filename)
+        if not ele_path.exists():
+            raise ReadError("File {} not found.".format(ele_filename))
+        else:
+            with open(ele_path, "r") as f:
+                mesh = read_ele_buffer(f, mesh, element_gids)
 
     # if *.xml file is present: Add cell or node data
-    xml_filename = xml_filename or filename.replace(".pat", ".xml")
-    if os.path.isfile(xml_filename):
-        mesh = read_xml_buffer(xml_filename, mesh, element_gids, point_gids)
+    if xml_filename:
+        xml_path = pathlib.Path(xml_filename)
+        if not xml_path.exists():
+            raise ReadError("File {} not found.".format(xml_filename))
+        else:
+            mesh = read_xml_buffer(xml_path, mesh, element_gids, point_gids)
 
     # if *.nod file is present: Add point data
-    nod_filename = nod_filename or filename.replace(".pat", ".nod")
-    if os.path.isfile(nod_filename):
-        with open(nod_filename, "r") as f:
-            mesh = read_nod_buffer(f, mesh, point_gids)
-
-    if autoremove:
-        mesh.prune()
-        mesh.prune_nan()
+    if nod_filename:
+        nod_path = pathlib.Path(nod_filename)
+        if not nod_path.exists():
+            raise ReadError("File {} not found.".format(nod_filename))
+        else:
+            with open(nod_path, "r") as f:
+                mesh = read_nod_buffer(f, mesh, point_gids)
 
     return mesh
 
@@ -109,24 +110,27 @@ def read_ele_buffer(f, mesh, element_gids):
 
     data = {}
 
-    for i in range(N):
+    for i in range(N - 20):
         line = f.readline().split()
         ID = int(line[0])
         values = list(map(float, line[1:]))
         data[ID] = numpy.array(values)
 
-    for elem_type in mesh.cells.keys():
-        if elem_type not in mesh.cell_data.keys():
-            mesh.cell_data[elem_type] = {}
+    data_list = []
+    for i, cell_block in enumerate(mesh.cells):
+        elem_type = cell_block.type
+        del_pos = []
         for pos, gid in enumerate(element_gids[elem_type]):
             try:
-                values = data[gid]
+                data_list.append(data[gid])
             except KeyError:
-                values = numpy.nan * numpy.ones(order)
-            if name in mesh.cell_data[elem_type].keys():
-                mesh.cell_data[elem_type][name].append(values)
-            else:
-                mesh.cell_data[elem_type][name] = [values]
+                del_pos.append(pos)
+        # delete cells with no data
+        mesh.cells[i] = mesh.cells[i]._replace(
+            data=numpy.delete(mesh.cells[i].data, del_pos, axis=0)
+        )
+
+    mesh.cell_data[name] = numpy.array(data_list)
 
     return mesh
 
@@ -171,34 +175,32 @@ def read_xml_buffer(xml_filename, mesh, element_gids, point_gids):
                 data[ID] = numpy.array(values)
 
         if "ELDT" in type:
-            for elem_type in mesh.cells.keys():
-                if elem_type not in mesh.cell_data.keys():
-                    mesh.cell_data[elem_type] = {}
+            data_list = []
+            for i, cell_block in enumerate(mesh.cells):
+                elem_type = cell_block.type
+                del_pos = []
                 for pos, gid in enumerate(element_gids[elem_type]):
                     try:
-                        values = data[gid]
+                        data_list.append(data[gid])
                     except KeyError:
-                        values = numpy.nan * numpy.ones(order)
+                        del_pos.append(pos)
+                # delete cells with no data.
+                mesh.cells[i] = mesh.cells[i]._replace(
+                    data=numpy.delete(mesh.cells[i].data, del_pos, axis=0)
+                )
 
-                    if name in mesh.cell_data[elem_type].keys():
-                        mesh.cell_data[elem_type][name].append(values)
-                    else:
-                        mesh.cell_data[elem_type][name] = [values]
+            mesh.cell_data[name] = numpy.array(data_list)
 
         elif "NDDT" in type:
+            data_list = []
             for gid in point_gids:
                 try:
                     values = data[gid]
                 except KeyError:
                     values = numpy.nan * numpy.ones(order)
+                data_list.append(values)
 
-                if name in mesh.point_data.keys():
-                    mesh.point_data[name] = numpy.vstack(
-                        (mesh.point_data[name], values)
-                    )
-                else:
-                    mesh.point_data[name] = values
-            mesh.point_data[name] = numpy.squeeze(mesh.point_data[name])
+            mesh.point_data[name] = numpy.squeeze(numpy.array(data_list))
 
     return mesh
 

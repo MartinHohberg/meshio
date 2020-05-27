@@ -114,16 +114,6 @@ class Mesh:
             self.cells[k] = CellBlock(c.type, all_cells_flat[k : k + n].reshape(s))
             k += n
 
-    def prune_nan(self):
-        for cell_type in self.cell_data.keys():
-            for data_type in self.cell_data[cell_type].keys():
-                nan = numpy.isnan(self.cell_data[cell_type][data_type])
-                mask = ~nan.any(axis=1)
-                self.cells[cell_type] = self.cells[cell_type][mask]
-                cell_data_arr = numpy.array(self.cell_data[cell_type][data_type])
-                masked_cell_data_arr = cell_data_arr[mask]
-                self.cell_data[cell_type][data_type] = masked_cell_data_arr.tolist()
-
     def write(self, path_or_buf, file_format=None, **kwargs):
         # avoid circular import
         from ._helpers import write
