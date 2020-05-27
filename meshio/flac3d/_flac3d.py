@@ -346,14 +346,8 @@ def _write_zgroups(f, cell_data, field_data, binary):
             for k in sorted(zgroups.keys()):
                 num_chars, num_zones = len(labels[k]), len(zgroups[k])
                 fmt = "<H{}sH7sI{}I".format(num_chars, num_zones)
-                tmp = [
-                    num_chars,
-                    labels[k].encode("utf-8"),
-                    7,
-                    slot,
-                    num_zones,
-                    *zgroups[k],
-                ]
+                zg = [zgroup for zgroup in zgroups[k]]
+                tmp = [num_chars, labels[k].encode("utf-8"), 7, slot, num_zones] + zg
                 f.write(struct.pack(fmt, *tmp))
         else:
             f.write("* ZONE GROUPS\n")

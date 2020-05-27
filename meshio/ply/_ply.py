@@ -273,7 +273,7 @@ def _read_binary(
     for (name, dt) in zip(cell_data_names, dts):
         if isinstance(dt, tuple):
             buffer_increment, cell_data[name] = _read_binary_list(
-                buffer[buffer_position:], *dt, num_cells, endianness
+                *([buffer[buffer_position:]] + dt + [num_cells, endianness])
             )
         else:
             buffer_increment = numpy.dtype(dt).itemsize
@@ -447,11 +447,10 @@ def write(filename, mesh, binary=True):  # noqa: C901
                 if cell_type not in ["triangle", "quad"]:
                     continue
                 # prepend with count
+                temp = [d for d in data.T]
                 out = numpy.rec.fromarrays(
-                    [
-                        numpy.broadcast_to(numpy.uint8(data.shape[1]), data.shape[0]),
-                        *data.T,
-                    ]
+                    [numpy.broadcast_to(numpy.uint8(data.shape[1]), data.shape[0]),]
+                    + temp
                 )
                 fh.write(out.tobytes())
         else:
