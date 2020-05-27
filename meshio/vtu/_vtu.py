@@ -5,7 +5,6 @@ I/O for VTU.
 """
 import base64
 import logging
-import lzma
 import re
 import sys
 import zlib
@@ -160,6 +159,10 @@ def _parse_raw_binary(filename):
 
     appended_data_tag = root.find("AppendedData")
     appended_data_tag.set("encoding", "base64")
+    try:
+        import lzma
+    except Exception:
+        print("Module lzma not available.")
 
     if "compressor" in root.attrib:
         c = {"vtkLZMADataCompressor": lzma, "vtkZLibDataCompressor": zlib}[
