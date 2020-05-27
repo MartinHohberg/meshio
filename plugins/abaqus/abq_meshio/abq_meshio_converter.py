@@ -248,11 +248,11 @@ def convertMDBtoMeshio(mdbObject, **kwargs):
             etype = abaqus_to_meshio_type(str(elem.type))
             if etype in cells.keys():
                 cells[etype].append(con)
-                cell_data[etype]["ID"] = np.append(cell_data[etype]["ID"], elem.label)
+                cell_data["ID"] = np.append(cell_data["ID"], elem.label)
             else:
                 # create a new key for a new element set
                 cells[etype] = [con]
-                cell_data[etype] = {"ID": np.array([elem.label])}
+                cell_data = {"ID": np.array([elem.label])}
 
         cells.update((key, np.array(cons)) for key, cons in cells.items())
         return points, cells, cell_data
@@ -343,33 +343,30 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
             # element
             fO_elem = fO_elem.getSubset(position=CENTROID)
             print("processing " + fO.name)
-            
+
             cell_data_labels_ = {}
-            
+
             for value in fO_elem.values:
-                etype = abaqus_to_meshio_type(value.baseElementType)
-                cell_data_labels_.setdefault(etype,{})
                 if fO.type == TENSOR_3D_FULL:
                     val_data = __reshape_TENSOR_3D_FULL(value.data)
                 elif fO.type == TENSOR_3D_PLANAR:
                     val_data = __reshape_TENSOR_3D_PLANAR(value.data)
                 else:
                     val_data = value.data
-                cell_data_labels_[etype][value.elementLabel] = val_data
-            
+                cell_data_labels_[value.elementLabel] = val_data
+
             return cell_data_labels_
-        
-        def sortCellOutput(fO_name,cell_data_labels_,cell_labels):
-            cell_data_ = {}
+
+        def sortCellOutput(fO_name, cell_data_labels_, cell_labels):
+            cell_data_ = {fO_name: []}
             for etype in cell_labels.keys():
-                cell_data_[etype] = {fO_name: []}
                 for label in cell_labels[etype]:
                     try:
-                        cell_data_[etype][fO_name].append(cell_data_labels_[etype][label])
-                    except:
-                        cell_data_[etype][fO_name].append(np.nan)
-                cell_data_[etype][fO_name] = np.array(cell_data_[etype][fO_name])
-            
+                        cell_data_[fO_name].append(cell_data_labels_[label])
+                    except KeyError:
+                        cell_data_[fO_name].append(np.nan)
+                cell_data_[fO_name] = np.array(cell_data_[fO_name])
+
             return cell_data_
 
         # assign
@@ -436,8 +433,8 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
             con = [nodeLU[c] for c in elem.connectivity]
             # get the type of element, convert to meshio representation
             etype = abaqus_to_meshio_type(str(elem.type))
-            cells.setdefault(etype,[]).append(con)
-            cell_labels.setdefault(etype,[]).append(elem.label)
+            cells.setdefault(etype, []).append(con)
+            cell_labels.setdefault(etype, []).append(elem.label)
 
         cells.update((key, np.array(cons)) for key, cons in cells.items())
 
@@ -459,7 +456,9 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
                             processPointOutput(fO)
                         elif fO_location in [CENTROID, INTEGRATION_POINT]:
                             cell_data_labels_ = processCellOutput(fO)
-                            cell_data_ = sortCellOutput(fO.name,cell_data_labels_,cell_labels)
+                            cell_data_ = sortCellOutput(
+                                fO.name, cell_data_labels_, cell_labels
+                            )
                             cell_data = __merge_cellData_dicts(cell_data, cell_data_)
                     else:
                         print(ERROR_NO_FIELD_DATA.format(field_name, inst_name))
@@ -481,7 +480,9 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
                             processPointOutput(fO)
                         elif fO_location in [CENTROID, INTEGRATION_POINT]:
                             cell_data_labels_ = processCellOutput(fO)
-                            cell_data_ = sortCellOutput(fO.name,cell_labels,cell_data_labels_)
+                            cell_data_ = sortCellOutput(
+                                fO.name, cell_labels, cell_data_labels_
+                            )
                             cell_data = __merge_cellData_dicts(cell_data, cell_data_)
 
                     if fO_location == NODAL:
@@ -541,21 +542,21 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
                     fdir1 = np.einsum("Ijk,k->Ij", def_grad, fdir1_0)
                     fdir1 = np.array([f_i / la.norm(f_i) for f_i in fdir1])
                     try:
-                        cell_data[etype].update({"FDIR1": fdir1})
+                        cell_data.update({"FDIR1": fdir1})
                     except KeyError:
-                        cell_data[etype] = {"FDIR1": fdir1}
+                        cell_data = {"FDIR1": fdir1}
                 if "FDIR2" in list_of_outputs:
                     fdir2 = np.einsum("Ijk,k->Ij", def_grad, fdir2_0)
                     fdir2 = np.array([f_i / la.norm(f_i) for f_i in fdir2])
                     try:
-                        cell_data[etype].update({"FDIR2": fdir2})
+                        cell_data.update({"FDIR2": fdir2})
                     except KeyError:
-                        cell_data[etype] = {"FDIR2": fdir2}
+                        cell_data = {"FDIR2": fdir2}
 
                 try:
-                    cell_data[etype].update({"F": def_grad})
+                    cell_data.update({"F": def_grad})
                 except KeyError:
-                    cell_data[etype] = {"F": def_grad}
+                    cell_data = {"F": def_grad}
 
         return points, cells, point_data, cell_data
 

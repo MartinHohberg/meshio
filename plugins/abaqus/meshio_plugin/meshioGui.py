@@ -1,4 +1,6 @@
 """GUI for meshio and related tools in Postprocessing."""
+import re
+
 #  import time
 from abaqusGui import (
     AFXSELECTFILE_ANY,
@@ -29,7 +31,6 @@ from abaqusGui import (
     showAFXWarningDialog,
 )
 
-import re
 
 class CreateSymmTensor(AFXDataDialog):
     """Create a new tensor field from given variables."""
@@ -258,18 +259,17 @@ class ExportODB(AFXDataDialog):
     [ID_CLICKED_FILE_BUTTON] = range(AFXDataDialog.ID_LAST, AFXDataDialog.ID_LAST + 1)
 
     def __init__(self, form):
-
         def atoi(text):
             return int(text) if text.isdigit() else text
 
         def natural_keys(text):
-            '''
+            """
             alist.sort(key=natural_keys) sorts in human order
             http://nedbatchelder.com/blog/200712/human_sorting.html
             (See Toothy's implementation in the comments)
-            '''
-            return [ atoi(c) for c in re.split(r'(\d+)', text) ]
-        
+            """
+            return [atoi(c) for c in re.split(r"(\d+)", text)]
+
         """Set up the initial dialog and connect Buttons to actions."""
         self.form = form
         # find current viewport
@@ -288,9 +288,9 @@ class ExportODB(AFXDataDialog):
         self.variables = []
         for var in currentViewport.odbDisplay.fieldVariables.variableList:
             self.variables.append(var[0])
-        
+
         self.variables.sort(key=natural_keys)
-        
+
         hf_selectors = FXHorizontalFrame(self)
 
         gb_instances = FXGroupBox(hf_selectors, "Instance", FRAME_GROOVE)
@@ -379,7 +379,7 @@ class ExportODB(AFXDataDialog):
         self.fileDialog.create()
         self.fileDialog.show()
         return 1
-    
+
     def processUpdates(self):
         """Update fields.
 
@@ -415,6 +415,6 @@ class ExportODB(AFXDataDialog):
             " list_of_outputs=['%s'], deformed=%s)"
             % ("','".join(variables), str(deformed))
         )
-        sendCommand("meshio.write('%s', odb_mesh, write_binary=False)" % tgt)
+        sendCommand("meshio.write('%s', odb_mesh, binary=False)" % tgt)
         self.form.deactivate()
         return 1
