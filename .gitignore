@@ -9,8 +9,6 @@
 *.off
 *.pvtu
 *.pyc
-*.vtk
-*.vtu
 *.xdmf
 *.xmf
 *.xml

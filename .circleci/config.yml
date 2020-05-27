@@ -1,24 +1,43 @@
 version: 2
 
 jobs:
-
+  lint:
+    docker:
+      - image: circleci/python:3
+    steps:
+      - checkout
+      - run: |
+          # For isort, must install all "system" dependencies
+          pip install isort
+          pip install .[all]
+          pip install pytest
+          isort -rc -c .
+      - run: |
+          pip install black
+          black --check .
+      - run: |
+          pip install flake8
+          flake8 .
   build:
     working_directory: ~/work
     docker:
-      - image: ubuntu:18.04
+      - image: circleci/python:3
     steps:
-      - run: apt-get update
       # <https://stackoverflow.com/a/44333806/353337>
-      - run: DEBIAN_FRONTEND=noninteractive apt install tzdata
-      - run: apt-get install -y git python3-h5py python3-netcdf4 python3-vtk7 python3-pip
-      - run: pip3 install -U pytest pytest-cov flake8 black
+      - run: DEBIAN_FRONTEND=noninteractive sudo apt-get install tzdata
+      - run: sudo apt-get install -y git git-lfs python3-h5py python3-netcdf4
       - checkout
-      # format and lint
-      - run: LC_ALL=C.UTF-8 black --check setup.py meshio/ test/*.py
-      - run: flake8 setup.py meshio/ test/*.py
+      - run: git lfs pull
       # The actual test
-      - run: pip3 install .[all]
-      - run: cd test/ && pytest --cov meshio
+      - run: |
+          pip install tox
+          tox
       # submit to codecov
-      - run: apt-get install -y curl
       - run: bash <(curl -s https://codecov.io/bash)
+
+workflows:
+  version: 2
+  lint_and_build:
+    jobs:
+      - lint
+      - build

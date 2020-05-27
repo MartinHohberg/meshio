@@ -1,15 +1,13 @@
-# -*- coding: utf-8 -*-
-#
 import pytest
 
-import meshio
-
 import helpers
+import meshio
 
 
 @pytest.mark.parametrize(
     "mesh",
     [
+        helpers.line_mesh,
         helpers.tri_mesh,
         helpers.triangle6_mesh,
         helpers.quad_mesh,
@@ -22,21 +20,19 @@ import helpers
         # helpers.add_point_data(helpers.tri_mesh, 1), # NOTE: Data not supported yet
         # helpers.add_point_data(helpers.tri_mesh, 3),
         # helpers.add_point_data(helpers.tri_mesh, 9),
-        # helpers.add_cell_data(helpers.tri_mesh, 1),
-        # helpers.add_cell_data(helpers.tri_mesh, 3),
-        # helpers.add_cell_data(helpers.tri_mesh, 9),
+        # helpers.add_cell_data(helpers.tri_mesh, [("a", (), numpy.float64)]),
+        # helpers.add_cell_data(helpers.tri_mesh, [("a", (3,), numpy.float64)]),
+        # helpers.add_cell_data(helpers.tri_mesh, [("a", (9,), numpy.float64)]),
         # helpers.add_field_data(helpers.tri_mesh, [1, 2], int),
         # helpers.add_field_data(helpers.tet_mesh, [1, 3], int),
         # helpers.add_field_data(helpers.hex_mesh, [1, 3], int),
     ],
 )
 def test_io(mesh):
-    helpers.write_read(meshio.mdpa_io.write, meshio.mdpa_io.read, mesh, 1.0e-15)
-    return
+    helpers.write_read(meshio.mdpa.write, meshio.mdpa.read, mesh, 1.0e-15)
 
 
 def test_generic_io():
     helpers.generic_io("test.mesh")
     # With additional, insignificant suffix:
     helpers.generic_io("test.0.mesh")
-    return
