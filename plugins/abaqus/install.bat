@@ -30,3 +30,9 @@ for /l %%i in (1,1,%UBound%) do (
   XCOPY %dir%abq_meshio !codedir!\abq_meshio\* /YQ
 )
 PAUSE
+
+:: Install dependencies for new Python 3 version ...
+curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+C:\SIMULIA\EstProducts\2020\win_b64\tools\SMApy\python2.7\python.exe get-pip.py
+DEL get-pip.py
+C:\SIMULIA\EstProducts\2020\win_b64\tools\SMApy\python2.7\Scripts\pip.exe install pathlib importlib_metadata
