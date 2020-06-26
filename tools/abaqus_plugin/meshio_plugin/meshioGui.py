@@ -418,3 +418,91 @@ class ExportODB(AFXDataDialog):
         sendCommand("meshio.write('%s', odb_mesh, binary=False)" % tgt)
         self.form.deactivate()
         return 1
+
+
+class ExportMDB(AFXDataDialog):
+    """Export MDB with meshio."""
+
+    [ID_CLICKED_FILE_BUTTON] = range(AFXDataDialog.ID_LAST, AFXDataDialog.ID_LAST + 1)
+
+    def __init__(self, form):
+        """Set up the initial dialog and connect Buttons to actions."""
+        self.form = form
+        self.file_name = AFXStringTarget()
+
+        AFXDataDialog.__init__(self, form, "Export MDB", 0, DIALOG_ACTIONS_SEPARATOR)
+
+        FXLabel(self, "This plugin exports the current part or assembly with meshio.")
+
+        hf_file = FXHorizontalFrame(self)
+        self.sourceTextField = AFXTextField(hf_file, 20, "Export to:")
+        self.sourceButton = FXButton(
+            hf_file, "Select File", None, self, self.ID_CLICKED_FILE_BUTTON
+        )
+
+        self.appendActionButton("Export", self, self.ID_CLICKED_APPLY)
+        self.appendActionButton(self.DISMISS)
+
+        FXMAPFUNC(self, SEL_COMMAND, self.ID_CLICKED_APPLY, ExportMDB.export)
+        FXMAPFUNC(self, SEL_COMMAND, self.ID_CLICKED_FILE_BUTTON, ExportMDB.select_file)
+
+    def select_file(self, sender, sel, ptr):
+        """Create file dialog, when the coresponding button was hit."""
+        # A pattern describes wich file types should be selected.
+        patterns = (
+            "VTK (*.vtk)\n"
+            "VTK (*.vtu)\n"
+            "STL (*.stl)\n"
+            "Dolfin-XML (*.xml)\n"
+            "Med (*.med)\n"
+            "Medit (*.mesh)\n"
+            "Gmsh4-binary (*.msh)\n"
+            "Permas (*.post)\n"
+            "Permas (*.post.gz)\n"
+            "Permas (*.dato)\n"
+            "Permas (*.dato.gz)\n"
+            "Moab (*.h5m)\n"
+            "Off (*.off)\n"
+            "Xdmf (*.xdmf)\n"
+            "Xmf (*.xmf)\n"
+            "Mdpa (*.mdpa)\n"
+            "SVG (*.svg)\n"
+            "Patran (*.pat)\n"
+            "Exodus (*.e)\n"
+            "Exodus (*.ex2)\n"
+            "Exodus (*.exo)\n"
+            "All Files (*.*)"
+        )
+
+        # open a file dialog and set it's target
+        self.fileDialog = AFXFileSelectorDialog(
+            self,
+            "Select Source File",
+            self.file_name,
+            None,
+            AFXSELECTFILE_ANY,
+            patterns,
+        )
+        self.fileDialog.create()
+        self.fileDialog.show()
+        return 1
+
+    def processUpdates(self):
+        """Update fields.
+
+        This is triggered by UI after each update.
+        """
+        self.sourceTextField.setText(self.file_name.getValue())
+
+    def export(self, sender, sel, ptr):
+        """Process inputs."""
+        tgt = r"".join(self.file_name.getValue())
+
+        sendCommand("import meshio")
+        sendCommand("from abq_meshio.abq_meshio_converter import convertMDBtoMeshio")
+        sendCommand("currentViewport = session.viewports[session.currentViewportName]")
+        sendCommand("displayedObject = currentViewport.displayedObject")
+        sendCommand("mdb_mesh = convertMDBtoMeshio(displayedObject)")
+        sendCommand("meshio.write('%s', mdb_mesh, binary=False)" % tgt)
+        self.form.deactivate()
+        return 1

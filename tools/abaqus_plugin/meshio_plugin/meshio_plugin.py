@@ -50,6 +50,18 @@ class ExportODB(AFXForm):
         return gui.ExportODB(self)
 
 
+class ExportMDB(AFXForm):
+    """Form to export MDB with meshio."""
+
+    def __init__(self, owner):
+        """Pass the toolset for initialization."""
+        AFXForm.__init__(self, owner)
+
+    def getFirstDialog(self):
+        """Fire up the first dialog."""
+        return gui.ExportMDB(self)
+
+
 toolset.registerGuiMenuButton(
     buttonText="Meshio|Create new symmetric tensor",
     object=CreateSymmTensor(toolset),
@@ -67,6 +79,13 @@ toolset.registerGuiMenuButton(
 toolset.registerGuiMenuButton(
     buttonText="Meshio|Export ODB",
     object=ExportODB(toolset),
+    version="1.0",
+    author="Nils Meyer",
+)
+
+toolset.registerGuiMenuButton(
+    buttonText="Meshio|Export MDB",
+    object=ExportMDB(toolset),
     version="1.0",
     author="Nils Meyer",
 )
