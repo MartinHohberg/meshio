@@ -45,7 +45,7 @@ except ImportError:
 
 
 def abaqus_to_meshio_type(element_type):
-    """Map Abaqus elment type to meshio types.
+    """Map Abaqus element type to meshio types.
 
     Parameters
     ----------
@@ -58,7 +58,6 @@ def abaqus_to_meshio_type(element_type):
         Meshio element type (e.g. hexahedron)
 
     """
-
     # trusss
     if "T2D2" in element_type or "T3D2" in element_type:
         return "line"
@@ -143,7 +142,10 @@ def __merge_numpy_dicts(dict1, dict2):
 
     for key in new_keys:
         if key in old_keys:
-            new_dict[key] = np.vstack((dict1[key], dict2[key]))
+            if len(dict1[key].shape) > 1 and len(dict2[key].shape) > 1:
+                new_dict[key] = np.vstack((dict1[key], dict2[key]))
+            else:
+                new_dict[key] = np.concatenate((dict1[key], dict2[key]))
         else:
             new_dict[key] = dict2[key]
     return new_dict
@@ -167,8 +169,6 @@ def __merge_cellData_dicts(dict1, dict2):
 
 
 def __reshape_fieldOutputs(cell_data_field, allocation):
-    """
-    """
     new_cell_data_dict = {}
     new_field_name, field_names_to_reshape = allocation
     field_names_to_reshape = np.asarray(field_names_to_reshape)
