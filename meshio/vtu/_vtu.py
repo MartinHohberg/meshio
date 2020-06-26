@@ -99,7 +99,10 @@ def _organize_cells(point_offsets, cells, cell_data_raw):
     out_cells = []
     for offset, cls, cdr in zip(point_offsets, cells, cell_data_raw):
         cls, cell_data = _cells_from_data(
-            cls["connectivity"], cls["offsets"], cls["types"], cdr
+            cls["connectivity"].ravel(),
+            cls["offsets"].ravel(),
+            cls["types"].ravel(),
+            cdr,
         )
         for c in cls:
             out_cells.append(CellBlock(c.type, c.data + offset))
@@ -559,14 +562,18 @@ def write(filename, mesh, binary=True, compression="zlib", header_type=None):
     # swap the data to match the system byteorder
     # Don't use byteswap to make sure that the dtype is changed; see
     # <https://github.com/numpy/numpy/issues/10372>.
-    points = mesh.points.astype(mesh.points.dtype.newbyteorder("="))
+    points = mesh.points.astype(mesh.points.dtype.newbyteorder("="), copy=False)
+    for k, (cell_type, data) in enumerate(mesh.cells):
+        mesh.cells[k] = CellBlock(
+            cell_type, data.astype(data.dtype.newbyteorder("="), copy=False)
+        )
     for key, data in mesh.point_data.items():
-        mesh.point_data[key] = data.astype(data.dtype.newbyteorder("="))
+        mesh.point_data[key] = data.astype(data.dtype.newbyteorder("="), copy=False)
     for data in mesh.cell_data.values():
         for k, dat in enumerate(data):
-            data[k] = dat.astype(dat.dtype.newbyteorder("="))
+            data[k] = dat.astype(dat.dtype.newbyteorder("="), copy=False)
     for key, data in mesh.field_data.items():
-        mesh.field_data[key] = data.astype(data.dtype.newbyteorder("="))
+        mesh.field_data[key] = data.astype(data.dtype.newbyteorder("="), copy=False)
 
     def numpy_to_xml_array(parent, name, data):
         vtu_type = numpy_to_vtu_type[data.dtype]
@@ -580,7 +587,7 @@ def write(filename, mesh, binary=True, compression="zlib", header_type=None):
                 # compressed write
                 def text_writer(f):
                     max_block_size = 32768
-                    data_bytes = data.tostring()
+                    data_bytes = data.tobytes()
 
                     # round up
                     num_blocks = -int(-len(data_bytes) // max_block_size)
@@ -605,18 +612,18 @@ def write(filename, mesh, binary=True, compression="zlib", header_type=None):
                         + [len(b) for b in compressed_blocks],
                         dtype=vtu_to_numpy_type[header_type],
                     )
-                    f.write(base64.b64encode(header.tostring()).decode())
+                    f.write(base64.b64encode(header.tobytes()).decode())
                     f.write(base64.b64encode(b"".join(compressed_blocks)).decode())
 
             else:
                 # uncompressed write
                 def text_writer(f):
-                    data_bytes = data.tostring()
+                    data_bytes = data.tobytes()
                     # collect header
                     header = numpy.array(
                         len(data_bytes), dtype=vtu_to_numpy_type[header_type]
                     )
-                    f.write(base64.b64encode(header.tostring() + data_bytes).decode())
+                    f.write(base64.b64encode(header.tobytes() + data_bytes).decode())
 
         else:
             da.set("format", "ascii")
