@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Fri Jan 25 18:04:22 2019
+"""Adapter to Meshio within Abaqus.
 
-@author: wt4452
+@author: Constantin Krauß and Nils Meyer
 """
 
 from time import time
@@ -334,14 +333,14 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
                 fO_elem = fO.getSubset(region=eset)
             else:
                 fO_elem = fO
-            n_el_values = len(fO_elem.values)
-            # check for availability of field output on each element
-            assert n_el_values == n_elements, ERROR_ELSET_FIELD.format(
-                field_name, inst_name
-            )
             # use interpolation to output on centroid, to assert on result per
             # element
             fO_elem = fO_elem.getSubset(position=CENTROID)
+            n_el_values = len(fO_elem.values)
+            # check for availability of field output on each element.
+            assert n_el_values == n_elements, ERROR_ELSET_FIELD.format(
+                field_name, inst_name
+            )
             print("processing " + fO.name)
 
             cell_data_labels_ = {}
