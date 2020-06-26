@@ -1,91 +1,76 @@
-# -*- coding: utf-8 -*-
-#
+import pathlib
+
+import numpy
 import pytest
 
+import helpers
 import meshio
 
-import helpers
-import legacy_reader
-import legacy_writer
-
-vtk = pytest.importorskip("vtk")
-lxml = pytest.importorskip("lxml")
-
 test_set = [
+    helpers.line_mesh,
     helpers.tri_mesh,
     helpers.triangle6_mesh,
     helpers.quad_mesh,
     helpers.quad8_mesh,
     helpers.tri_quad_mesh,
+    helpers.polygon_mesh,
     helpers.tet_mesh,
     helpers.tet10_mesh,
     helpers.hex_mesh,
     helpers.hex20_mesh,
+    helpers.polyhedron_mesh,
     helpers.add_point_data(helpers.tri_mesh, 1),
     helpers.add_point_data(helpers.tri_mesh, 2),
     helpers.add_point_data(helpers.tri_mesh, 3),
-    helpers.add_cell_data(helpers.tri_mesh, 1),
-    helpers.add_cell_data(helpers.tri_mesh, 2),
-    helpers.add_cell_data(helpers.tri_mesh, 3),
+    helpers.add_cell_data(helpers.tri_mesh, [("a", (), numpy.float64)]),
+    helpers.add_cell_data(helpers.tri_quad_mesh, [("a", (), numpy.float64)]),
+    helpers.add_cell_data(helpers.tri_mesh, [("a", (2,), numpy.float32)]),
+    helpers.add_cell_data(helpers.tri_mesh, [("b", (3,), numpy.float64)]),
+    helpers.add_cell_data(helpers.polygon_mesh, [("a", (), numpy.float32)]),
+    helpers.add_cell_data(helpers.polyhedron_mesh, [("a", (2,), numpy.float32)]),
 ]
 
 
 @pytest.mark.parametrize("mesh", test_set)
-@pytest.mark.parametrize("write_binary", [False, True])
-def test(mesh, write_binary):
+@pytest.mark.parametrize(
+    "data_type", [(False, None), (True, None), (True, "lzma"), (True, "zlib")]
+)
+def test(mesh, data_type):
+    binary, compression = data_type
+
     def writer(*args, **kwargs):
-        return meshio.vtu_io.write(
-            *args,
-            write_binary=write_binary,
-            # don't use pretty xml to increase test coverage
-            pretty_xml=False,
-            **kwargs
-        )
+        return meshio.vtu.write(*args, binary=binary, compression=compression, **kwargs)
 
     # ASCII files are only meant for debugging, VTK stores only 11 digits
     # <https://gitlab.kitware.com/vtk/vtk/issues/17038#note_264052>
-    tol = 1.0e-15 if write_binary else 1.0e-11
-    helpers.write_read(writer, meshio.vtu_io.read, mesh, tol)
-    return
-
-
-@pytest.mark.parametrize("mesh", test_set)
-@pytest.mark.parametrize("write_binary", [False, True])
-def test_legacy_writer(mesh, write_binary):
-    # test with legacy writer
-    def lw(*args, **kwargs):
-        mode = "vtu-binary" if write_binary else "vtu-ascii"
-        return legacy_writer.write(mode, *args, **kwargs)
-
-    # The legacy writer only writes with low precision.
-    tol = 1.0e-15 if write_binary else 1.0e-11
-    helpers.write_read(lw, meshio.vtu_io.read, mesh, tol)
-    return
-
-
-@pytest.mark.parametrize("mesh", test_set)
-@pytest.mark.parametrize("write_binary", [False, True])
-def test_legacy_reader(mesh, write_binary):
-    def writer(*args, **kwargs):
-        return meshio.vtu_io.write(*args, write_binary=write_binary, **kwargs)
-
-    # test with legacy reader
-    def lr(filename):
-        mode = "vtu-binary" if write_binary else "vtu-ascii"
-        return legacy_reader.read(mode, filename)
-
-    # the legacy reader only reads at low precision
-    tol = 1.0e-15 if write_binary else 1.0e-11
-    helpers.write_read(writer, lr, mesh, tol)
-    return
+    tol = 1.0e-15 if binary else 1.0e-10
+    helpers.write_read(writer, meshio.vtu.read, mesh, tol)
 
 
 def test_generic_io():
     helpers.generic_io("test.vtu")
     # With additional, insignificant suffix:
     helpers.generic_io("test.0.vtu")
-    return
+
+
+@pytest.mark.parametrize(
+    "filename, ref_cells, ref_num_cells, ref_num_pnt",
+    [
+        ("00_raw_binary.vtu", "tetra", 162, 64),
+        ("01_raw_binary_int64.vtu", "tetra", 162, 64),
+        ("02_raw_compressed.vtu", "tetra", 162, 64),
+    ],
+)
+def test_read_from_file(filename, ref_cells, ref_num_cells, ref_num_pnt):
+    this_dir = pathlib.Path(__file__).resolve().parent
+    filename = this_dir / "meshes" / "vtu" / filename
+
+    mesh = meshio.read(filename)
+    assert len(mesh.cells) == 1
+    assert ref_cells == mesh.cells[0].type
+    assert len(mesh.cells[0].data) == ref_num_cells
+    assert len(mesh.points) == ref_num_pnt
 
 
 if __name__ == "__main__":
-    test(helpers.tet10_mesh, write_binary=False)
+    test(helpers.tet10_mesh, binary=False)
