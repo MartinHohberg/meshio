@@ -118,8 +118,9 @@ def read_ele_buffer(f, mesh, element_gids):
         values = list(map(float, line[1:]))
         data[ID] = numpy.array(values)
 
-    data_list = []
+    mesh.cell_data[name] = []
     for i, cell_block in enumerate(mesh.cells):
+        data_list = []
         elem_type = cell_block.type
         del_pos = []
         for pos, gid in enumerate(element_gids[elem_type]):
@@ -131,8 +132,7 @@ def read_ele_buffer(f, mesh, element_gids):
         mesh.cells[i] = mesh.cells[i]._replace(
             data=numpy.delete(mesh.cells[i].data, del_pos, axis=0)
         )
-
-    mesh.cell_data[name] = numpy.array(data_list)
+        mesh.cell_data[name].append(numpy.array(data_list))
 
     return mesh
 
@@ -177,8 +177,9 @@ def read_xml_buffer(xml_filename, mesh, element_gids, point_gids):
                 data[ID] = numpy.array(values)
 
         if "ELDT" in type:
-            data_list = []
+            mesh.cell_data[name] = []
             for i, cell_block in enumerate(mesh.cells):
+                data_list = []
                 elem_type = cell_block.type
                 del_pos = []
                 for pos, gid in enumerate(element_gids[elem_type]):
@@ -190,8 +191,7 @@ def read_xml_buffer(xml_filename, mesh, element_gids, point_gids):
                 mesh.cells[i] = mesh.cells[i]._replace(
                     data=numpy.delete(mesh.cells[i].data, del_pos, axis=0)
                 )
-
-            mesh.cell_data[name] = numpy.array(data_list)
+                mesh.cell_data[name].append(numpy.array(data_list))
 
         elif "NDDT" in type:
             data_list = []
