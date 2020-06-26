@@ -2,10 +2,10 @@
 from abaqus import milestone, session
 from abaqusConstants import (
     INTEGRATION_POINT,
+    MAGNITUDE,
     MAX_PRINCIPAL,
     MID_PRINCIPAL,
     MIN_PRINCIPAL,
-    NODAL,
     SINGLE_PRECISION,
     TENSOR_3D_FULL,
     VECTOR,
@@ -50,21 +50,40 @@ def tensor(odb_name, field_name, desc, s1, s2, s3, s4, s5, s6):
         N = len(odb.steps[stepName].frames)
         for i, frame in enumerate(odb.steps[stepName].frames):
             milestone("Adding field to frames in step %s" % stepName, "Frame", i, N)
-            sdv1 = frame.fieldOutputs[s1]
-            sdv2 = frame.fieldOutputs[s2]
-            sdv3 = frame.fieldOutputs[s3]
-            sdv4 = frame.fieldOutputs[s4]
-            sdv5 = frame.fieldOutputs[s6]  # different order in ODB (WTF ABQ?!)
-            sdv6 = frame.fieldOutputs[s5]  # different order in ODB (WTF ABQ?!)
+            sv1 = frame.fieldOutputs[s1]
+            sv2 = frame.fieldOutputs[s2]
+            sv3 = frame.fieldOutputs[s3]
+            sv4 = frame.fieldOutputs[s4]
+            sv5 = frame.fieldOutputs[s6]  # different order in ODB (WTF ABQ?!)
+            sv6 = frame.fieldOutputs[s5]  # different order in ODB (WTF ABQ?!)
+
+            instance = sv1.values[0].instance
+            position = sv1.locations[0].position
+            if not (
+                instance.name == sv2.values[0].instance.name
+                and instance.name == sv3.values[0].instance.name
+                and instance.name == sv4.values[0].instance.name
+                and instance.name == sv5.values[0].instance.name
+                and instance.name == sv6.values[0].instance.name
+            ):
+                print("Could not create field, data is from different instances.")
+                break
+            if not (
+                position == sv2.locations[0].position
+                and position == sv3.locations[0].position
+                and position == sv4.locations[0].position
+                and position == sv5.locations[0].position
+                and position == sv6.locations[0].position
+            ):
+                print(
+                    "Could not create field, data from nodes and integration points cannot be combined."
+                )
+                break
+
             labels = []
             data = []
             for s1c, s2c, s3c, s4c, s5c, s6c in zip(
-                sdv1.values,
-                sdv2.values,
-                sdv3.values,
-                sdv4.values,
-                sdv5.values,
-                sdv6.values,
+                sv1.values, sv2.values, sv3.values, sv4.values, sv5.values, sv6.values,
             ):
                 if s1c.precision == SINGLE_PRECISION:
                     data.append(
@@ -90,23 +109,9 @@ def tensor(odb_name, field_name, desc, s1, s2, s3, s4, s5, s6):
                 type=TENSOR_3D_FULL,
                 validInvariants=invariants,
             )
-            # fill field output with values
-            instance = sdv1.values[0].instance
-            if (
-                instance.name == sdv2.values[0].instance.name
-                and instance.name == sdv3.values[0].instance.name
-                and instance.name == sdv4.values[0].instance.name
-                and instance.name == sdv5.values[0].instance.name
-                and instance.name == sdv6.values[0].instance.name
-            ):
-                Field.addData(
-                    position=INTEGRATION_POINT,
-                    instance=instance,
-                    labels=labels,
-                    data=data,
-                )
-            else:
-                print("Could not create field, data is from different" " instances.")
+            Field.addData(
+                position=position, instance=instance, labels=labels, data=data,
+            )
 
     odb.save()
     odb.close()
@@ -147,31 +152,50 @@ def vector(odb_name, field_name, desc, s1, s2, s3):
         N = len(odb.steps[stepName].frames)
         for i, frame in enumerate(odb.steps[stepName].frames):
             milestone("Adding field to frames in step %s" % stepName, "Frame", i, N)
-            sdv1 = frame.fieldOutputs[s1]
-            sdv2 = frame.fieldOutputs[s2]
-            sdv3 = frame.fieldOutputs[s3]
+            sv1 = frame.fieldOutputs[s1]
+            sv2 = frame.fieldOutputs[s2]
+            sv3 = frame.fieldOutputs[s3]
+            instance = sv1.values[0].instance
+            position = sv1.locations[0].position
+            if not (
+                instance.name == sv2.values[0].instance.name
+                and instance.name == sv3.values[0].instance.name
+            ):
+                print("Could not create field, data is from different instances.")
+                break
+            if not (
+                position == sv2.locations[0].position
+                and position == sv3.locations[0].position
+            ):
+                print(
+                    "Could not create field, data from nodes and integration points "
+                    "cannot be combined."
+                )
+                break
+
             labels = []
             data = []
-            for s1c, s2c, s3c in zip(sdv1.values, sdv2.values, sdv3.values):
+            for s1c, s2c, s3c in zip(sv1.values, sv2.values, sv3.values):
                 if s1c.precision == SINGLE_PRECISION:
                     data.append((s1c.data, s2c.data, s3c.data))
                 else:
                     data.append((s1c.dataDouble, s2c.dataDouble, s3c.dataDouble))
-                labels.append(s1c.nodeLabel)
+                if position == INTEGRATION_POINT:
+                    labels.append(s1c.elementLabel)
+                else:
+                    labels.append(s1c.nodeLabel)
 
             # create empty field output
-            Field = frame.FieldOutput(name=field_name, description=desc, type=VECTOR)
+            Field = frame.FieldOutput(
+                name=field_name,
+                description=desc,
+                type=VECTOR,
+                validInvariants=(MAGNITUDE,),
+            )
             # fill field output with values
-            instance = sdv1.values[0].instance
-            if (
-                instance.name == sdv2.values[0].instance.name
-                and instance.name == sdv3.values[0].instance.name
-            ):
-                Field.addData(
-                    position=NODAL, instance=instance, labels=labels, data=data
-                )
-            else:
-                print("Could not create field, data is from different" " instances.")
+            Field.addData(
+                position=position, instance=instance, labels=labels, data=data
+            )
 
     odb.save()
     odb.close()
