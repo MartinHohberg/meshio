@@ -57,13 +57,13 @@ def read(
         filename : str
             Patran filename that should be read
 
-        ele_filename : list of str, optional
+        ele_filenames : list of str, optional
             element-wise data file
 
-        nod_filename : list of str, optional
+        nod_filenames : list of str, optional
             node-wise data file.
 
-        xml_filename : list of str, optional
+        xml_filenames : list of str, optional
             element-wise data file
 
         scale : float
@@ -97,7 +97,6 @@ def read(
 
     if autoremove:
         mesh.prune()
-        mesh.prune_nan()
 
     return mesh
 
@@ -113,7 +112,7 @@ def read_ele_buffer(f, mesh, element_gids):
 
     data = {}
 
-    for i in range(N - 20):
+    for i in range(N):
         line = f.readline().split()
         ID = int(line[0])
         values = list(map(float, line[1:]))
