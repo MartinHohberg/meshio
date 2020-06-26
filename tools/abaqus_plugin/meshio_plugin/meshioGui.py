@@ -60,7 +60,8 @@ class CreateSymmTensor(AFXDataDialog):
 
         variables = []
         for var in currentViewport.odbDisplay.fieldVariables.variableList:
-            variables.append(var[0])
+            if var[5] == "scalar":
+                variables.append(var[0])
 
         nvis = len(variables)
         self.s1combo = AFXComboBox(self, 0, nvis, "Component 11:")
@@ -182,7 +183,8 @@ class CreateVector(AFXDataDialog):
 
         variables = []
         for var in currentViewport.odbDisplay.fieldVariables.variableList:
-            variables.append(var[0])
+            if var[5] == "scalar":
+                variables.append(var[0])
 
         nvis = len(variables)
         self.s1combo = AFXComboBox(self, 0, nvis, "Component 1:")
