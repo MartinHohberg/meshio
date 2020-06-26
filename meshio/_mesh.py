@@ -41,10 +41,10 @@ class Mesh:
         self.gmsh_periodic = gmsh_periodic
         self.info = info
 
-        for key, data in self.cell_data.items():
-            assert len(data) == len(cells), (
-                "Incompatible cell data. {} cell blocks, but '{}' has {} blocks."
-            ).format(len(cells), key, len(data))
+        # for key, data in self.cell_data.items():
+        #     assert len(data) == len(cells), (
+        #         "Incompatible cell data. {} cell blocks, but '{}' has {} blocks."
+        #     ).format(len(cells), key, len(data))
 
     def __repr__(self):
         lines = [
