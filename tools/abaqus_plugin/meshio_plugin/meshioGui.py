@@ -417,6 +417,7 @@ class ExportODB(AFXDataDialog):
             " list_of_outputs=['%s'], deformed=%s)"
             % ("','".join(variables), str(deformed))
         )
+        sendCommand("print(odb_mesh)")
         sendCommand("meshio.write('%s', odb_mesh, binary=False)" % tgt)
         self.form.deactivate()
         return 1
@@ -505,6 +506,7 @@ class ExportMDB(AFXDataDialog):
         sendCommand("currentViewport = session.viewports[session.currentViewportName]")
         sendCommand("displayedObject = currentViewport.displayedObject")
         sendCommand("mdb_mesh = convertMDBtoMeshio(displayedObject)")
+        sendCommand("print(mdb_mesh)")
         sendCommand("meshio.write('%s', mdb_mesh, binary=False)" % tgt)
         self.form.deactivate()
         return 1
