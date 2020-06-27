@@ -4,6 +4,7 @@
 @author: Constantin Krauß and Nils Meyer
 """
 
+import collections
 from time import time
 
 import numpy as np
@@ -12,6 +13,8 @@ import numpy.linalg as la
 import meshio as mo
 
 reload(mo)
+
+CellBlock = collections.namedtuple("CellBlock", ["type", "data"])
 
 in_abq = False
 try:
@@ -195,9 +198,42 @@ def __reshape_fieldOutputs(cell_data_field, allocation):
     return new_cell_data_dict
 
 
+def _translate_cells(_cells, _cell_data):
+    """Translate cells to new format.
+
+    Parameters
+    ----------
+    _cells : cell dictionary
+        dictionary of the form {cell_type:np.array([])}
+    _cell_data : cell data dictionary
+        dictionary of the form {cell_type:{data_name:np.array([])}}
+
+    Returns
+    -------
+    tuple
+        reformatted cells and cell_data in the format [(cell_type, np.array([]))]
+        and [{data_name:[np.array([])]}], respectively.
+
+
+    """
+    cells = []
+    cell_data = {}
+    for cell_type, data in _cells.items():
+        # create CellBlock tuples
+        cells.append(CellBlock(cell_type, data))
+
+        # if there is cell data, form a list with one numpy object for each cell type.
+        if cell_type in _cell_data.keys():
+            for name in _cell_data[cell_type].keys():
+                if name in cell_data:
+                    cell_data[name].append(_cell_data[cell_type][name])
+                else:
+                    cell_data[name] = [_cell_data[cell_type][name]]
+    return cells, cell_data
+
+
 def convertMDBtoMeshio(mdbObject, **kwargs):
     """
-    convertMDBtoMeshio(mdbObject, **kwargs)
 
     This function converts geometry information stored in Abaqus model database
     (mdb) to a meshio compatible representation.
@@ -247,11 +283,11 @@ def convertMDBtoMeshio(mdbObject, **kwargs):
             etype = abaqus_to_meshio_type(str(elem.type))
             if etype in cells.keys():
                 cells[etype].append(con)
-                cell_data["ID"] = np.append(cell_data["ID"], elem.label)
+                cell_data[etype]["ID"] = np.append(cell_data[etype]["ID"], elem.label)
             else:
                 # create a new key for a new element set
                 cells[etype] = [con]
-                cell_data = {"ID": np.array([elem.label])}
+                cell_data[etype] = {"ID": np.array([elem.label])}
 
         cells.update((key, np.array(cons)) for key, cons in cells.items())
         return points, cells, cell_data
@@ -277,12 +313,19 @@ def convertMDBtoMeshio(mdbObject, **kwargs):
             points_, cells_, cell_data_ = convertInstance(inst, idx_shift)
             points = np.vstack((points, points_))
             cells = __merge_numpy_dicts(cells, cells_)
-            cell_data = __merge_numpy_dicts(cell_data, cell_data_)
+            for etype in cells.keys():
+                if etype in cell_data.keys():
+                    cell_data[etype] = __merge_numpy_dicts(
+                        cell_data[etype], cell_data_[etype]
+                    )
+                else:
+                    cell_data[etype] = cell_data_[etype]
             idx_shift += len(points_)
 
     else:
         raise TypeError(ERROR_NO_MDBObject.format(mdbObject))
 
+    cells, cell_data = _translate_cells(cells, cell_data)
     return mo.Mesh(points, cells, cell_data=cell_data)
 
 
@@ -346,25 +389,30 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
             cell_data_labels_ = {}
 
             for value in fO_elem.values:
+                etype = abaqus_to_meshio_type(value.baseElementType)
+                cell_data_labels_.setdefault(etype, {})
                 if fO.type == TENSOR_3D_FULL:
                     val_data = __reshape_TENSOR_3D_FULL(value.data)
                 elif fO.type == TENSOR_3D_PLANAR:
                     val_data = __reshape_TENSOR_3D_PLANAR(value.data)
                 else:
                     val_data = value.data
-                cell_data_labels_[value.elementLabel] = val_data
+                cell_data_labels_[etype][value.elementLabel] = val_data
 
             return cell_data_labels_
 
         def sortCellOutput(fO_name, cell_data_labels_, cell_labels):
-            cell_data_ = {fO_name: []}
+            cell_data_ = {}
             for etype in cell_labels.keys():
+                cell_data_[etype] = {fO_name: []}
                 for label in cell_labels[etype]:
                     try:
-                        cell_data_[fO_name].append(cell_data_labels_[label])
+                        cell_data_[etype][fO_name].append(
+                            cell_data_labels_[etype][label]
+                        )
                     except KeyError:
-                        cell_data_[fO_name].append(np.nan)
-                cell_data_[fO_name] = np.array(cell_data_[fO_name])
+                        cell_data_[etype][fO_name].append(np.nan)
+                cell_data_[etype][fO_name] = np.array(cell_data_[etype][fO_name])
 
             return cell_data_
 
@@ -541,16 +589,16 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
                     fdir1 = np.einsum("Ijk,k->Ij", def_grad, fdir1_0)
                     fdir1 = np.array([f_i / la.norm(f_i) for f_i in fdir1])
                     try:
-                        cell_data.update({"FDIR1": fdir1})
+                        cell_data[etype].update({"FDIR1": fdir1})
                     except KeyError:
-                        cell_data = {"FDIR1": fdir1}
+                        cell_data[etype] = {"FDIR1": fdir1}
                 if "FDIR2" in list_of_outputs:
                     fdir2 = np.einsum("Ijk,k->Ij", def_grad, fdir2_0)
                     fdir2 = np.array([f_i / la.norm(f_i) for f_i in fdir2])
                     try:
-                        cell_data.update({"FDIR2": fdir2})
+                        cell_data[etype].update({"FDIR2": fdir2})
                     except KeyError:
-                        cell_data = {"FDIR2": fdir2}
+                        cell_data[etype] = {"FDIR2": fdir2}
 
                 try:
                     cell_data.update({"F": def_grad})
@@ -589,6 +637,7 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
                 idx_shift += len(points_)
     toc = time()
     print("took {} seconds".format(toc - tic))
+    cells, cell_data = _translate_cells(cells, cell_data)
     return mo.Mesh(points, cells, point_data, cell_data)
 
 
