@@ -371,6 +371,7 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
             return
 
         def processCellOutput(fO):
+            print("processing " + fO.name)
             # process element data on several integration point
             if isElSet:
                 fO_elem = fO.getSubset(region=eset)
@@ -380,11 +381,18 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
             # element
             fO_elem = fO_elem.getSubset(position=CENTROID)
             n_el_values = len(fO_elem.values)
+            # Use the first section point of cells, if there are multiple integration
+            # points
+            if n_el_values > n_elements and n_el_values % n_elements == 0:
+                secp = fO_elem.locations[0].sectionPoints[0]
+                print("Info: Using section point %s" % secp.description)
+                fO_elem = fO_elem.getSubset(sectionPoint=secp)
+                n_el_values = len(fO_elem.values)
+
             # check for availability of field output on each element.
             assert n_el_values == n_elements, ERROR_ELSET_FIELD.format(
                 field_name, inst_name
             )
-            print("processing " + fO.name)
 
             cell_data_labels_ = {}
 
