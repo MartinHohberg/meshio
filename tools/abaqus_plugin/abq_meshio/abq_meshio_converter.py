@@ -92,7 +92,7 @@ def abaqus_to_meshio_type(element_type):
         return "tetra4"
     if "C3D10" in element_type:
         return "tetra10"
-    if "C3D6" in element_type:
+    if "C3D6" in element_type or "SC6" in element_type:
         return "wedge"
 
 
@@ -281,13 +281,16 @@ def convertMDBtoMeshio(mdbObject, **kwargs):
             con = [nodeLU[c + 1] for c in elem.connectivity]  # consider shift
             # get the type of element, convert to meshio representation
             etype = abaqus_to_meshio_type(str(elem.type))
-            if etype in cells.keys():
-                cells[etype].append(con)
-                cell_data[etype]["ID"] = np.append(cell_data[etype]["ID"], elem.label)
-            else:
-                # create a new key for a new element set
-                cells[etype] = [con]
-                cell_data[etype] = {"ID": np.array([elem.label])}
+            if etype:
+                if etype in cells.keys():
+                    cells[etype].append(con)
+                    cell_data[etype]["ID"] = np.append(
+                        cell_data[etype]["ID"], elem.label
+                    )
+                else:
+                    # create a new key for a new element set
+                    cells[etype] = [con]
+                    cell_data[etype] = {"ID": np.array([elem.label])}
 
         cells.update((key, np.array(cons)) for key, cons in cells.items())
         return points, cells, cell_data
@@ -398,14 +401,15 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
 
             for value in fO_elem.values:
                 etype = abaqus_to_meshio_type(value.baseElementType)
-                cell_data_labels_.setdefault(etype, {})
-                if fO.type == TENSOR_3D_FULL:
-                    val_data = __reshape_TENSOR_3D_FULL(value.data)
-                elif fO.type == TENSOR_3D_PLANAR:
-                    val_data = __reshape_TENSOR_3D_PLANAR(value.data)
-                else:
-                    val_data = value.data
-                cell_data_labels_[etype][value.elementLabel] = val_data
+                if etype:
+                    cell_data_labels_.setdefault(etype, {})
+                    if fO.type == TENSOR_3D_FULL:
+                        val_data = __reshape_TENSOR_3D_FULL(value.data)
+                    elif fO.type == TENSOR_3D_PLANAR:
+                        val_data = __reshape_TENSOR_3D_PLANAR(value.data)
+                    else:
+                        val_data = value.data
+                    cell_data_labels_[etype][value.elementLabel] = val_data
 
             return cell_data_labels_
 
@@ -488,8 +492,9 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
             con = [nodeLU[c] for c in elem.connectivity]
             # get the type of element, convert to meshio representation
             etype = abaqus_to_meshio_type(str(elem.type))
-            cells.setdefault(etype, []).append(con)
-            cell_labels.setdefault(etype, []).append(elem.label)
+            if etype:
+                cells.setdefault(etype, []).append(con)
+                cell_labels.setdefault(etype, []).append(elem.label)
 
         cells.update((key, np.array(cons)) for key, cons in cells.items())
 
