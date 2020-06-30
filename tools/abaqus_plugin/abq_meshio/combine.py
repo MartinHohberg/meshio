@@ -57,51 +57,6 @@ def tensor(odb_name, field_name, desc, s1, s2, s3, s4, s5, s6):
             sv5 = frame.fieldOutputs[s6]  # different order in ODB (WTF ABQ?!)
             sv6 = frame.fieldOutputs[s5]  # different order in ODB (WTF ABQ?!)
 
-            instance = sv1.values[0].instance
-            position = sv1.locations[0].position
-            if not (
-                instance.name == sv2.values[0].instance.name
-                and instance.name == sv3.values[0].instance.name
-                and instance.name == sv4.values[0].instance.name
-                and instance.name == sv5.values[0].instance.name
-                and instance.name == sv6.values[0].instance.name
-            ):
-                print("Could not create field, data is from different instances.")
-                break
-            if not (
-                position == sv2.locations[0].position
-                and position == sv3.locations[0].position
-                and position == sv4.locations[0].position
-                and position == sv5.locations[0].position
-                and position == sv6.locations[0].position
-            ):
-                print(
-                    "Could not create field, data from nodes and integration points cannot be combined."
-                )
-                break
-
-            labels = []
-            data = []
-            for s1c, s2c, s3c, s4c, s5c, s6c in zip(
-                sv1.values, sv2.values, sv3.values, sv4.values, sv5.values, sv6.values,
-            ):
-                if s1c.precision == SINGLE_PRECISION:
-                    data.append(
-                        (s1c.data, s2c.data, s3c.data, s4c.data, s5c.data, s6c.data)
-                    )
-                else:
-                    data.append(
-                        (
-                            s1c.dataDouble,
-                            s2c.dataDouble,
-                            s3c.dataDouble,
-                            s4c.dataDouble,
-                            s5c.dataDouble,
-                            s6c.dataDouble,
-                        )
-                    )
-                labels.append(s1c.elementLabel)
-
             # create empty field output
             Field = frame.FieldOutput(
                 name=field_name,
@@ -109,9 +64,8 @@ def tensor(odb_name, field_name, desc, s1, s2, s3, s4, s5, s6):
                 type=TENSOR_3D_FULL,
                 validInvariants=invariants,
             )
-            Field.addData(
-                position=position, instance=instance, labels=labels, data=data,
-            )
+
+            _add_to_field(Field, odb, sv1, sv2, sv3, sv4, sv5, sv6)
 
     odb.save()
     odb.close()
@@ -155,35 +109,6 @@ def vector(odb_name, field_name, desc, s1, s2, s3):
             sv1 = frame.fieldOutputs[s1]
             sv2 = frame.fieldOutputs[s2]
             sv3 = frame.fieldOutputs[s3]
-            instance = sv1.values[0].instance
-            position = sv1.locations[0].position
-            if not (
-                instance.name == sv2.values[0].instance.name
-                and instance.name == sv3.values[0].instance.name
-            ):
-                print("Could not create field, data is from different instances.")
-                break
-            if not (
-                position == sv2.locations[0].position
-                and position == sv3.locations[0].position
-            ):
-                print(
-                    "Could not create field, data from nodes and integration points "
-                    "cannot be combined."
-                )
-                break
-
-            labels = []
-            data = []
-            for s1c, s2c, s3c in zip(sv1.values, sv2.values, sv3.values):
-                if s1c.precision == SINGLE_PRECISION:
-                    data.append((s1c.data, s2c.data, s3c.data))
-                else:
-                    data.append((s1c.dataDouble, s2c.dataDouble, s3c.dataDouble))
-                if position == INTEGRATION_POINT:
-                    labels.append(s1c.elementLabel)
-                else:
-                    labels.append(s1c.nodeLabel)
 
             # create empty field output
             Field = frame.FieldOutput(
@@ -192,10 +117,8 @@ def vector(odb_name, field_name, desc, s1, s2, s3):
                 type=VECTOR,
                 validInvariants=(MAGNITUDE,),
             )
-            # fill field output with values
-            Field.addData(
-                position=position, instance=instance, labels=labels, data=data
-            )
+
+            _add_to_field(Field, odb, sv1, sv2, sv3)
 
     odb.save()
     odb.close()
@@ -204,3 +127,43 @@ def vector(odb_name, field_name, desc, s1, s2, s3):
     session.viewports[current_viewport].setValues(displayedObject=odb)
     print("Done.")
     return 1
+
+
+def _add_to_field(Field, odb, *args):
+    labels = {}
+    data = {}
+    for svals in zip(*[a.values for a in args]):
+        instance_name = svals[0].instance.name
+        position = svals[0].position
+        precision = svals[0].precision
+
+        # Check wether they are from same instance
+        if not all([instance_name == s.instance.name for s in svals]):
+            print("Could not create field, data is from different instances.")
+            break
+
+        if precision == SINGLE_PRECISION:
+            data_tuple = tuple([s.data for s in svals])
+        else:
+            data_tuple = tuple([s.dataDouble for s in svals])
+
+        if position == INTEGRATION_POINT:
+            label = svals[0].elementLabel
+        else:
+            label = svals[0].nodeLabel
+
+        # build dictionary
+        if instance_name in data.keys():
+            data[instance_name].append(data_tuple)
+        else:
+            data[instance_name] = [data_tuple]
+        if instance_name in labels.keys():
+            labels[instance_name].append(label)
+        else:
+            labels[instance_name] = [label]
+
+    # fill field output with values
+    for instance_name, d in data.items():
+        instance = odb.rootAssembly.instances[instance_name]
+        lbl = labels[instance_name]
+        Field.addData(position=position, instance=instance, labels=lbl, data=d)
