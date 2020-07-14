@@ -652,7 +652,7 @@ def _write_points(f, points, binary):
         points.astype(points.dtype.newbyteorder(">")).tofile(f, sep="")
     else:
         # ascii
-        points.tofile(f, sep=" ")
+        numpy.savetxt(f, points, delimiter=" ", fmt="%1.4e")
     f.write(b"\n")
 
 
@@ -677,9 +677,10 @@ def _write_cells(f, cells, binary):
         for c in cells:
             n = c.data.shape[1]
             # prepend a column with the value n
-            numpy.column_stack(
+            data = numpy.column_stack(
                 [numpy.full(c.data.shape[0], n, dtype=c.data.dtype), c.data]
-            ).tofile(f, sep="\n")
+            )
+            numpy.savetxt(f, data, delimiter=" ", fmt="%d")
             f.write(b"\n")
 
     # write cell types
@@ -731,8 +732,7 @@ def _write_field_data(f, data, binary):
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            values.tofile(f, sep=" ")
-            # numpy.savetxt(f, points)
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e")
         f.write(b"\n")
 
 
