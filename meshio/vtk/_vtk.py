@@ -613,10 +613,10 @@ def write(filename, mesh, binary=True):
         logging.warning("VTK ASCII files are only meant for debugging.")
 
     with open_file(filename, "wb") as f:
-        f.write(b"# vtk DataFile Version 4.2\r\n")
-        f.write("written by meshio v{}\r\n".format(__version__).encode("utf-8"))
-        f.write(("BINARY\r\n" if binary else "ASCII\r\n").encode("utf-8"))
-        f.write(b"DATASET UNSTRUCTURED_GRID\r\n")
+        f.write(b"# vtk DataFile Version 4.2\n")
+        f.write("written by meshio v{}\n".format(__version__).encode("utf-8"))
+        f.write(("BINARY\n" if binary else "ASCII\n").encode("utf-8"))
+        f.write(b"DATASET UNSTRUCTURED_GRID\n")
 
         # write points and cells
         _write_points(f, points, binary)
@@ -625,19 +625,19 @@ def write(filename, mesh, binary=True):
         # write point data
         if mesh.point_data:
             num_points = mesh.points.shape[0]
-            f.write("POINT_DATA {}\r\n".format(num_points).encode("utf-8"))
+            f.write("POINT_DATA {}\n".format(num_points).encode("utf-8"))
             _write_field_data(f, mesh.point_data, binary)
 
         # write cell data
         if mesh.cell_data:
             total_num_cells = sum(len(c.data) for c in mesh.cells)
-            f.write("CELL_DATA {}\r\n".format(total_num_cells).encode("utf-8"))
+            f.write("CELL_DATA {}\n".format(total_num_cells).encode("utf-8"))
             _write_field_data(f, mesh.cell_data, binary)
 
 
 def _write_points(f, points, binary):
     f.write(
-        "POINTS {} {}\r\n".format(
+        "POINTS {} {}\n".format(
             len(points), numpy_to_vtk_dtype[points.dtype.name]
         ).encode("utf-8")
     )
@@ -652,8 +652,8 @@ def _write_points(f, points, binary):
         points.astype(points.dtype.newbyteorder(">")).tofile(f, sep="")
     else:
         # ascii
-        numpy.savetxt(f, points, delimiter=" ", fmt="%1.4e", newline="\r\n")
-    f.write(b"\r\n")
+        numpy.savetxt(f, points, delimiter=" ", fmt="%1.4e")
+    f.write(b"\n")
 
 
 def _write_cells(f, cells, binary):
@@ -661,7 +661,7 @@ def _write_cells(f, cells, binary):
     total_num_idx = sum([numpy.prod(c.data.shape) for c in cells])
     # For each cell, the number of nodes is stored
     total_num_idx += total_num_cells
-    f.write("CELLS {} {}\r\n".format(total_num_cells, total_num_idx).encode("utf-8"))
+    f.write("CELLS {} {}\n".format(total_num_cells, total_num_idx).encode("utf-8"))
     if binary:
         for c in cells:
             n = c.data.shape[1]
@@ -671,7 +671,7 @@ def _write_cells(f, cells, binary):
             numpy.column_stack(
                 [numpy.full(c.data.shape[0], n, dtype=dtype), c.data.astype(dtype)],
             ).astype(dtype).tofile(f, sep="")
-        f.write(b"\r\n")
+        f.write(b"\n")
     else:
         # ascii
         for c in cells:
@@ -680,11 +680,11 @@ def _write_cells(f, cells, binary):
             data = numpy.column_stack(
                 [numpy.full(c.data.shape[0], n, dtype=c.data.dtype), c.data]
             )
-            numpy.savetxt(f, data, delimiter=" ", fmt="%d", newline="\r\n")
-            f.write(b"\r\n")
+            numpy.savetxt(f, data, delimiter=" ", fmt="%d")
+            f.write(b"\n")
 
     # write cell types
-    f.write("CELL_TYPES {}\r\n".format(total_num_cells).encode("utf-8"))
+    f.write("CELL_TYPES {}\n".format(total_num_cells).encode("utf-8"))
     if binary:
         for c in cells:
             key_ = c.type[:7] if c.type[:7] == "polygon" else c.type
@@ -692,17 +692,17 @@ def _write_cells(f, cells, binary):
             numpy.full(len(c.data), vtk_type, dtype=numpy.dtype(">i4")).tofile(
                 f, sep=""
             )
-        f.write(b"\r\n")
+        f.write(b"\n")
     else:
         # ascii
         for c in cells:
             key_ = c.type[:7] if c.type[:7] == "polygon" else c.type
-            numpy.full(len(c.data), meshio_to_vtk_type[key_]).tofile(f, sep="\r\n")
-            f.write(b"\r\n")
+            numpy.full(len(c.data), meshio_to_vtk_type[key_]).tofile(f, sep="\n")
+            f.write(b"\n")
 
 
 def _write_field_data(f, data, binary):
-    f.write(("FIELD FieldData {}\r\n".format(len(data))).encode("utf-8"))
+    f.write(("FIELD FieldData {}\n".format(len(data))).encode("utf-8"))
     for name, values in data.items():
         if isinstance(values, list):
             values = numpy.concatenate(values)
@@ -720,7 +720,7 @@ def _write_field_data(f, data, binary):
 
         f.write(
             (
-                "{} {} {} {}\r\n".format(
+                "{} {} {} {}\n".format(
                     name,
                     num_components,
                     num_tuples,
@@ -732,8 +732,8 @@ def _write_field_data(f, data, binary):
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e", newline="\r\n")
-        f.write(b"\r\n")
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e")
+        f.write(b"\n")
 
 
 register("vtk", [".vtk"], read, {"vtk": write})
