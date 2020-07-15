@@ -44,7 +44,7 @@ def read(
     nod_filenames=[],
     xml_filenames=[],
     scale=1.0,
-    autoremove=True,
+    autoremove=False,
 ):
     """Read a Patran *.pat file.
 
