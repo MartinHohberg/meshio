@@ -702,6 +702,85 @@ def _write_cells(f, cells, binary):
 
 
 def _write_field_data(f, data, binary):
+    vectors = {}
+    tensors = {}
+    fields = {}
+    for name, values in data.items():
+        if isinstance(values, list):
+            values = numpy.concatenate(values)
+        if len(values.shape) == 1:
+            num_tuples = values.shape[0]
+            num_components = 1
+        else:
+            num_tuples = values.shape[0]
+            num_components = values.shape[1]
+
+        if num_components == 3:
+            vectors[name] = values
+        elif num_components == 6:
+            tensors[name] = numpy.column_stack(
+                (
+                    values[:, 0],
+                    values[:, 3],
+                    values[:, 4],
+                    values[:, 3],
+                    values[:, 1],
+                    values[:, 5],
+                    values[:, 4],
+                    values[:, 5],
+                    values[:, 2],
+                )
+            )
+        elif num_components == 9:
+            tensors[name] = values
+        else:
+            fields[name] = values
+
+    _write_tensor(f, tensors, binary)
+    _write_field(f, fields, binary)
+
+
+def _write_vector(f, data, binary):
+    for name, values in data.items():
+        if " " in name:
+            raise WriteError(
+                "VTK doesn't support spaces in field names ('{}').".format(name)
+            )
+
+        f.write(
+            (
+                "VECTORS {} {}\n".format(name, numpy_to_vtk_dtype[values.dtype.name],)
+            ).encode("utf-8")
+        )
+        if binary:
+            values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
+        else:
+            # ascii
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e")
+        f.write(b"\n")
+
+
+def _write_tensor(f, data, binary):
+    for name, values in data.items():
+        if " " in name:
+            raise WriteError(
+                "VTK doesn't support spaces in field names ('{}').".format(name)
+            )
+
+        f.write(
+            (
+                "TENSORS {} {}\n".format(name, numpy_to_vtk_dtype[values.dtype.name],)
+            ).encode("utf-8")
+        )
+        if binary:
+            values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
+        else:
+            # ascii
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e")
+        f.write(b"\n")
+
+
+def _write_field(f, data, binary):
     f.write(("FIELD FieldData {}\n".format(len(data))).encode("utf-8"))
     for name, values in data.items():
         if isinstance(values, list):
