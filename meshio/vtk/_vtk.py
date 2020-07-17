@@ -714,8 +714,6 @@ def _write_field_data(f, data, binary):
             values = values.reshape((values.shape[0], -1))
             num_components = values.shape[1]
 
-        print(num_components)
-
         if num_components == 3:
             vectors[name] = values
         elif num_components == 6:
