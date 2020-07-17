@@ -709,11 +709,12 @@ def _write_field_data(f, data, binary):
         if isinstance(values, list):
             values = numpy.concatenate(values)
         if len(values.shape) == 1:
-            num_tuples = values.shape[0]
             num_components = 1
         else:
-            num_tuples = values.shape[0]
+            values = values.reshape((values.shape[0], -1))
             num_components = values.shape[1]
+
+        print(num_components)
 
         if num_components == 3:
             vectors[name] = values
@@ -736,6 +737,7 @@ def _write_field_data(f, data, binary):
         else:
             fields[name] = values
 
+    _write_vector(f, vectors, binary)
     _write_tensor(f, tensors, binary)
     _write_field(f, fields, binary)
 
@@ -781,7 +783,8 @@ def _write_tensor(f, data, binary):
 
 
 def _write_field(f, data, binary):
-    f.write(("FIELD FieldData {}\n".format(len(data))).encode("utf-8"))
+    if len(data) > 0:
+        f.write(("FIELD FieldData {}\n".format(len(data))).encode("utf-8"))
     for name, values in data.items():
         if isinstance(values, list):
             values = numpy.concatenate(values)
