@@ -1,6 +1,7 @@
 """
 I/O for VTK <https://www.vtk.org/wp-content/uploads/2015/04/file-formats.pdf>.
 """
+import os
 import logging
 from functools import reduce
 
@@ -53,6 +54,9 @@ vtk_type_to_numnodes = numpy.array(
         4,  # line4
     ]
 )
+
+SEP = os.linesep
+BSEP = SEP.encode("utf-8")
 
 
 # These are all VTK data types. One sometimes finds 'vtktypeint64', but
@@ -366,7 +370,7 @@ def _read_coords(f, data_type, is_ascii, num_points):
         dtype = dtype.newbyteorder(">")
         coords = numpy.fromfile(f, count=num_points, dtype=dtype)
         line = f.readline().decode("utf-8")
-        if line != "\n":
+        if line != "%s" % SEP:
             raise ReadError()
     return coords
 
@@ -381,7 +385,7 @@ def _read_points(f, data_type, is_ascii, num_points):
         dtype = dtype.newbyteorder(">")
         points = numpy.fromfile(f, count=num_points * 3, dtype=dtype)
         line = f.readline().decode("utf-8")
-        if line != "\n":
+        if line != "%s" % SEP:
             raise ReadError()
     return points.reshape((num_points, 3))
 
@@ -392,7 +396,7 @@ def _read_cells(f, is_ascii, num_items):
     else:
         c = numpy.fromfile(f, count=num_items, dtype=">i4")
         line = f.readline().decode("utf-8")
-        if line != "\n":
+        if line != "%s" % SEP:
             raise ReadError()
     return c
 
@@ -436,7 +440,7 @@ def _read_scalar_field(f, num_data, split, is_ascii):
         dtype = dtype.newbyteorder(">")
         data = numpy.fromfile(f, count=num_data, dtype=dtype)
         line = f.readline().decode("utf-8")
-        if line != "\n":
+        if line != "%s" % SEP:
             raise ReadError()
 
     return {data_name: data}
@@ -458,7 +462,7 @@ def _read_field(f, num_data, split, shape, is_ascii):
         dtype = dtype.newbyteorder(">")
         data = numpy.fromfile(f, count=k * num_data, dtype=dtype)
         line = f.readline().decode("utf-8")
-        if line != "\n":
+        if line != "%s" % SEP:
             raise ReadError()
 
     data = data.reshape(-1, *shape)
@@ -487,7 +491,7 @@ def _read_fields(f, num_fields, is_ascii):
             dtype = dtype.newbyteorder(">")
             dat = numpy.fromfile(f, count=shape0 * shape1, dtype=dtype)
             line = f.readline().decode("utf-8")
-            if line != "\n":
+            if line != "%s" % SEP:
                 raise ReadError()
 
         if shape0 != 1:
@@ -613,10 +617,10 @@ def write(filename, mesh, binary=True):
         logging.warning("VTK ASCII files are only meant for debugging.")
 
     with open_file(filename, "wb") as f:
-        f.write(b"# vtk DataFile Version 4.2\n")
-        f.write("written by meshio v{}\n".format(__version__).encode("utf-8"))
-        f.write(("BINARY\n" if binary else "ASCII\n").encode("utf-8"))
-        f.write(b"DATASET UNSTRUCTURED_GRID\n")
+        f.write("# vtk DataFile Version 4.2{}".format(SEP).encode("utf-8"))
+        f.write("written by meshio v{}{}".format(__version__, SEP).encode("utf-8"))
+        f.write(("BINARY%s" % SEP if binary else "ASCII%s" % SEP).encode("utf-8"))
+        f.write("DATASET UNSTRUCTURED_GRID{}".format(SEP).encode("utf-8"))
 
         # write points and cells
         _write_points(f, points, binary)
@@ -625,20 +629,20 @@ def write(filename, mesh, binary=True):
         # write point data
         if mesh.point_data:
             num_points = mesh.points.shape[0]
-            f.write("POINT_DATA {}\n".format(num_points).encode("utf-8"))
+            f.write("POINT_DATA {}{}".format(num_points, SEP).encode("utf-8"))
             _write_field_data(f, mesh.point_data, binary)
 
         # write cell data
         if mesh.cell_data:
             total_num_cells = sum(len(c.data) for c in mesh.cells)
-            f.write("CELL_DATA {}\n".format(total_num_cells).encode("utf-8"))
+            f.write("CELL_DATA {}{}".format(total_num_cells, SEP).encode("utf-8"))
             _write_field_data(f, mesh.cell_data, binary)
 
 
 def _write_points(f, points, binary):
     f.write(
-        "POINTS {} {}\n".format(
-            len(points), numpy_to_vtk_dtype[points.dtype.name]
+        "POINTS {} {} {}".format(
+            len(points), numpy_to_vtk_dtype[points.dtype.name], SEP
         ).encode("utf-8")
     )
 
@@ -652,8 +656,8 @@ def _write_points(f, points, binary):
         points.astype(points.dtype.newbyteorder(">")).tofile(f, sep="")
     else:
         # ascii
-        numpy.savetxt(f, points, delimiter=" ", fmt="%1.4e")
-    f.write(b"\n")
+        numpy.savetxt(f, points, delimiter=" ", fmt="%1.4e", newline=SEP)
+    f.write(BSEP)
 
 
 def _write_cells(f, cells, binary):
@@ -661,7 +665,9 @@ def _write_cells(f, cells, binary):
     total_num_idx = sum([numpy.prod(c.data.shape) for c in cells])
     # For each cell, the number of nodes is stored
     total_num_idx += total_num_cells
-    f.write("CELLS {} {}\n".format(total_num_cells, total_num_idx).encode("utf-8"))
+    f.write(
+        "CELLS {} {} {}".format(total_num_cells, total_num_idx, SEP).encode("utf-8")
+    )
     if binary:
         for c in cells:
             n = c.data.shape[1]
@@ -671,7 +677,7 @@ def _write_cells(f, cells, binary):
             numpy.column_stack(
                 [numpy.full(c.data.shape[0], n, dtype=dtype), c.data.astype(dtype)],
             ).astype(dtype).tofile(f, sep="")
-        f.write(b"\n")
+        f.write(BSEP)
     else:
         # ascii
         for c in cells:
@@ -680,11 +686,11 @@ def _write_cells(f, cells, binary):
             data = numpy.column_stack(
                 [numpy.full(c.data.shape[0], n, dtype=c.data.dtype), c.data]
             )
-            numpy.savetxt(f, data, delimiter=" ", fmt="%d")
-            f.write(b"\n")
+            numpy.savetxt(f, data, delimiter=" ", fmt="%d", newline=SEP)
+            f.write(BSEP)
 
     # write cell types
-    f.write("CELL_TYPES {}\n".format(total_num_cells).encode("utf-8"))
+    f.write("CELL_TYPES {} {}".format(total_num_cells, SEP).encode("utf-8"))
     if binary:
         for c in cells:
             key_ = c.type[:7] if c.type[:7] == "polygon" else c.type
@@ -692,13 +698,13 @@ def _write_cells(f, cells, binary):
             numpy.full(len(c.data), vtk_type, dtype=numpy.dtype(">i4")).tofile(
                 f, sep=""
             )
-        f.write(b"\n")
+        f.write(BSEP)
     else:
         # ascii
         for c in cells:
             key_ = c.type[:7] if c.type[:7] == "polygon" else c.type
-            numpy.full(len(c.data), meshio_to_vtk_type[key_]).tofile(f, sep="\n")
-            f.write(b"\n")
+            numpy.full(len(c.data), meshio_to_vtk_type[key_]).tofile(f, sep=SEP)
+            f.write(BSEP)
 
 
 def _write_field_data(f, data, binary):
@@ -749,15 +755,17 @@ def _write_vector(f, data, binary):
 
         f.write(
             (
-                "VECTORS {} {}\n".format(name, numpy_to_vtk_dtype[values.dtype.name],)
+                "VECTORS {} {} {}".format(
+                    name, numpy_to_vtk_dtype[values.dtype.name], SEP
+                )
             ).encode("utf-8")
         )
         if binary:
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e")
-        f.write(b"\n")
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e", newline=SEP)
+        f.write(BSEP)
 
 
 def _write_tensor(f, data, binary):
@@ -769,20 +777,22 @@ def _write_tensor(f, data, binary):
 
         f.write(
             (
-                "TENSORS {} {}\n".format(name, numpy_to_vtk_dtype[values.dtype.name],)
+                "TENSORS {} {} {}".format(
+                    name, numpy_to_vtk_dtype[values.dtype.name], SEP
+                )
             ).encode("utf-8")
         )
         if binary:
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e")
-        f.write(b"\n")
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e", newline=SEP)
+        f.write(BSEP)
 
 
 def _write_field(f, data, binary):
     if len(data) > 0:
-        f.write(("FIELD FieldData {}\n".format(len(data))).encode("utf-8"))
+        f.write(("FIELD FieldData {} {}".format(len(data), SEP)).encode("utf-8"))
     for name, values in data.items():
         if isinstance(values, list):
             values = numpy.concatenate(values)
@@ -800,11 +810,12 @@ def _write_field(f, data, binary):
 
         f.write(
             (
-                "{} {} {} {}\n".format(
+                "{} {} {} {} {}".format(
                     name,
                     num_components,
                     num_tuples,
                     numpy_to_vtk_dtype[values.dtype.name],
+                    SEP,
                 )
             ).encode("utf-8")
         )
@@ -812,8 +823,8 @@ def _write_field(f, data, binary):
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e")
-        f.write(b"\n")
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e", newline=SEP)
+        f.write(BSEP)
 
 
 register("vtk", [".vtk"], read, {"vtk": write})
