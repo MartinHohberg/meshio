@@ -130,12 +130,17 @@ def vector(odb_name, field_name, desc, s1, s2, s3):
 
 
 def _add_to_field(Field, odb, *args):
+    import numpy as np
+
     labels = {}
     data = {}
+    section_points = {}
     for svals in zip(*[a.values for a in args]):
         instance_name = svals[0].instance.name
         position = svals[0].position
         precision = svals[0].precision
+        section_point = svals[0].sectionPoint
+        section_number = svals[0].sectionPoint.number
 
         # Check wether they are from same instance
         if not all([instance_name == s.instance.name for s in svals]):
@@ -154,16 +159,27 @@ def _add_to_field(Field, odb, *args):
 
         # build dictionary
         if instance_name in data.keys():
-            data[instance_name].append(data_tuple)
+            if section_number in data[instance_name].keys():
+                data[instance_name][section_number].append(data_tuple)
+                labels[instance_name][section_number].append(label)
+                section_points[instance_name][section_number] = section_point
+            else:
+                data[instance_name][section_number] = [data_tuple]
+                labels[instance_name][section_number] = [label]
+                section_points[instance_name][section_number] = section_point
         else:
-            data[instance_name] = [data_tuple]
-        if instance_name in labels.keys():
-            labels[instance_name].append(label)
-        else:
-            labels[instance_name] = [label]
+            data[instance_name] = {section_number: [data_tuple]}
+            labels[instance_name] = {section_number: [label]}
+            section_points[instance_name] = {section_number: section_point}
 
     # fill field output with values
-    for instance_name, d in data.items():
+    for instance_name in data.keys():
         instance = odb.rootAssembly.instances[instance_name]
-        lbl = labels[instance_name]
-        Field.addData(position=position, instance=instance, labels=lbl, data=d)
+        for section_number in data[instance_name].keys():
+            Field.addData(
+                position=position,
+                instance=instance,
+                labels=labels[instance_name][section_number],
+                data=data[instance_name][section_number],
+                sectionPoint=section_points[instance_name][section_number],
+            )
