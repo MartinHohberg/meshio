@@ -130,8 +130,6 @@ def vector(odb_name, field_name, desc, s1, s2, s3):
 
 
 def _add_to_field(Field, odb, *args):
-    import numpy as np
-
     labels = {}
     data = {}
     section_points = {}
