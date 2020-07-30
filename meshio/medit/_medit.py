@@ -284,7 +284,8 @@ def write_ascii_file(filename, mesh, float_fmt=".16e"):
 
         fmt = " ".join(["{:" + float_fmt + "}"] * d) + " {:d}\n"
         for x, label in zip(mesh.points, labels):
-            fh.write(fmt.format(*(x + [label])).encode("utf-8"))
+            arg_list = [x_item for x_item in x] + [label]
+            fh.write(fmt.format(*arg_list).encode("utf-8"))
 
         medit_from_meshio = {
             "line": ("Edges", 2),
@@ -327,7 +328,8 @@ def write_ascii_file(filename, mesh, float_fmt=".16e"):
             fmt = " ".join(["{:d}"] * (num + 1)) + "\n"
             # adapt 1-base
             for d, label in zip(data + 1, labels):
-                fh.write(fmt.format(*(d + [label])).encode("utf-8"))
+                arg_list = [d_item for d_item in d] + [label]
+                fh.write(fmt.format(*arg_list).encode("utf-8"))
 
         fh.write(b"\nEnd\n")
 
