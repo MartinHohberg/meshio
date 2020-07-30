@@ -24,6 +24,11 @@ from .._exceptions import ReadError
 from .._helpers import register
 from .._mesh import CellBlock, Mesh
 
+try:
+    import lzma
+except Exception:
+    print("Module lzma not available.")
+
 
 def num_bytes_to_num_base64_chars(num_bytes):
     # Rounding up in integer division works by double negation since Python
@@ -166,10 +171,6 @@ def _parse_raw_binary(filename):
 
     appended_data_tag = root.find("AppendedData")
     appended_data_tag.set("encoding", "base64")
-    try:
-        import lzma
-    except Exception:
-        print("Module lzma not available.")
 
     if "compressor" in root.attrib:
         c = {"vtkLZMADataCompressor": lzma, "vtkZLibDataCompressor": zlib}[
