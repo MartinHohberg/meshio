@@ -664,7 +664,7 @@ def _write_points(f, points, binary):
         points.astype(points.dtype.newbyteorder(">")).tofile(f, sep="")
     else:
         # ascii
-        numpy.savetxt(f, points, delimiter=" ", fmt="%1.4e", newline=SEP)
+        numpy.savetxt(f, points, delimiter=" ", fmt="%1.16e", newline=SEP)
     f.write(BSEP)
 
 
@@ -780,7 +780,7 @@ def _write_vector(f, data, binary):
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e", newline=SEP)
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.16e", newline=SEP)
         f.write(BSEP)
 
 
@@ -802,7 +802,7 @@ def _write_tensor(f, data, binary):
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e", newline=SEP)
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.16e", newline=SEP)
         f.write(BSEP)
 
 
@@ -839,7 +839,7 @@ def _write_field(f, data, binary):
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e", newline=SEP)
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.16e", newline=SEP)
         f.write(BSEP)
 
 
