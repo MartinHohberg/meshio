@@ -287,9 +287,8 @@ def _read_binary(
     cell_data = {}
     for (name, dt) in zip(cell_data_names, dts):
         if isinstance(dt, tuple):
-            buffer_increment, cell_data[name] = _read_binary_list(
-                *([buffer[buffer_position:]] + dt + [num_cells, endianness])
-            )
+            arg_list = [buffer[buffer_position:]] + list(dt) + [num_cells, endianness]
+            buffer_increment, cell_data[name] = _read_binary_list(*arg_list)
         else:
             buffer_increment = numpy.dtype(dt).itemsize
             cell_data[name] = numpy.frombuffer(
