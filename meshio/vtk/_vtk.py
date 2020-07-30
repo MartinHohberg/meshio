@@ -764,10 +764,7 @@ def _write_field_data(f, data, binary):
 
 def _write_vector(f, data, binary):
     for name, values in data.items():
-        if " " in name:
-            raise WriteError(
-                "VTK doesn't support spaces in field names ('{}').".format(name)
-            )
+        name.replace(" ", "_")
 
         f.write(
             (
@@ -786,10 +783,7 @@ def _write_vector(f, data, binary):
 
 def _write_tensor(f, data, binary):
     for name, values in data.items():
-        if " " in name:
-            raise WriteError(
-                "VTK doesn't support spaces in field names ('{}').".format(name)
-            )
+        name.replace(" ", "_")
 
         f.write(
             (
@@ -819,10 +813,7 @@ def _write_field(f, data, binary):
             num_tuples = values.shape[0]
             num_components = values.shape[1]
 
-        if " " in name:
-            raise WriteError(
-                "VTK doesn't support spaces in field names ('{}').".format(name)
-            )
+        name.replace(" ", "_")
 
         f.write(
             (
