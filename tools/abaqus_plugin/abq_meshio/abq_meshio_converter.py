@@ -12,10 +12,6 @@ import numpy.linalg as la
 
 import meshio as mo
 
-reload(mo)
-
-CellBlock = collections.namedtuple("CellBlock", ["type", "data"])
-
 in_abq = False
 try:
     from abaqus import *
@@ -44,6 +40,10 @@ try:
     in_abq = True
 except ImportError:
     raise SystemError("Functions do only work in Abaqus")
+
+reload(mo)
+
+CellBlock = collections.namedtuple("CellBlock", ["type", "data"])
 
 
 def abaqus_to_meshio_type(element_type):

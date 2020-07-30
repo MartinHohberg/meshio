@@ -1,8 +1,8 @@
 """
 I/O for VTK <https://www.vtk.org/wp-content/uploads/2015/04/file-formats.pdf>.
 """
-import os
 import logging
+import os
 from functools import reduce
 
 import numpy
