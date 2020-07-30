@@ -34,10 +34,11 @@ try:
     from odbAccess import *
     from odbMaterial import *
     from odbSection import *
+
+    reload(mo)
 except ImportError:
     raise SystemError("Functions do only work in Abaqus")
 
-reload(mo)
 
 CellBlock = collections.namedtuple("CellBlock", ["type", "data"])
 
