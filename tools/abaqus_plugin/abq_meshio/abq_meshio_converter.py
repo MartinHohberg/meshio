@@ -11,7 +11,6 @@ import numpy.linalg as la
 
 import meshio as mo
 
-in_abq = False
 try:
     from abaqus import *
     from abaqusConstants import (
@@ -35,8 +34,6 @@ try:
     from odbAccess import *
     from odbMaterial import *
     from odbSection import *
-
-    in_abq = True
 except ImportError:
     raise SystemError("Functions do only work in Abaqus")
 
