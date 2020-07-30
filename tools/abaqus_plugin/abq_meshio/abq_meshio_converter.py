@@ -9,8 +9,6 @@ from time import time
 import numpy as np
 import numpy.linalg as la
 
-import meshio as mo
-
 try:
     from abaqus import *
     from abaqusConstants import (
@@ -34,6 +32,8 @@ try:
     from odbAccess import *
     from odbMaterial import *
     from odbSection import *
+
+    import meshio as mo
 
     reload(mo)
 except ImportError:
