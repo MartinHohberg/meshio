@@ -839,7 +839,11 @@ def _write_field(f, data, binary):
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            numpy.savetxt(f, values, delimiter=" ", fmt="%1.16e", newline=SEP)
+            if numpy_to_vtk_dtype[values.dtype.name] == "int":
+                fmt = "%d"
+            else:
+                fmt = "%1.16e"
+            numpy.savetxt(f, values, delimiter=" ", fmt=fmt, newline=SEP)
         f.write(BSEP)
 
 
