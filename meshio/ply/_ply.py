@@ -468,7 +468,7 @@ def write(filename, mesh, binary=True):  # noqa: C901
                 # prepend with count
                 temp = [d for d in data.T]
                 out = numpy.rec.fromarrays(
-                    [numpy.broadcast_to(numpy.uint8(data.shape[1]), data.shape[0]),]
+                    [numpy.broadcast_to(numpy.uint8(data.shape[1]), data.shape[0])]
                     + temp
                 )
                 fh.write(out.tobytes())

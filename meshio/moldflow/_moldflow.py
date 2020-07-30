@@ -16,15 +16,11 @@ caas/sfdcarticles/sfdcarticles/How-to-export-fiber-orientation-results
 """
 
 import os
-import pathlib
 
 import numpy
 
-from ..__about__ import __version__
-from .._exceptions import ReadError
-from .._files import open_file
 from .._helpers import register
-from .._mesh import CellBlock, Mesh
+from .._mesh import Mesh
 
 pat_to_meshio_type = {
     2: "line",
@@ -71,6 +67,7 @@ def read(
 
         autoremove : boolean
             automatically delete cells with no data attached
+
     """
     with open(filename, "r") as f:
         mesh, element_gids, point_gids = read_pat_buffer(f, scale)
@@ -103,11 +100,9 @@ def read(
 
 def read_ele_buffer(f, mesh, element_gids):
     """Read element based data file."""
-
     name = f.readline().replace(" ", "_").rstrip("\n")
     dimensions = f.readline().split()
     N = int(dimensions[0])
-    order = int(dimensions[-1])
     f.readline()
 
     data = {}
