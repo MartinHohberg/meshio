@@ -3,7 +3,6 @@
 
 @author: Constantin Krauß and Nils Meyer
 """
-
 import collections
 from time import time
 
