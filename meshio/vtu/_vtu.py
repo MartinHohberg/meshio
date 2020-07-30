@@ -13,6 +13,8 @@ import numpy
 
 from ..__about__ import __version__
 from .._common import (
+    _meshio_to_vtk_order,
+    _vtk_to_meshio_order,
     meshio_to_vtk_type,
     num_nodes_per_cell,
     raw_from_cell_data,
@@ -21,6 +23,11 @@ from .._common import (
 from .._exceptions import ReadError
 from .._helpers import register
 from .._mesh import CellBlock, Mesh
+
+try:
+    import lzma
+except Exception:
+    print("Module lzma not available.")
 
 
 def num_bytes_to_num_base64_chars(num_bytes):
@@ -69,7 +76,8 @@ def _cells_from_data(connectivity, offsets, types, cell_data_raw):
             for sz in numpy.unique(size):
                 items = numpy.where(size == sz)[0]
                 indices = numpy.add.outer(
-                    start_cn[items + 1], numpy.arange(-sz, 0, dtype=offsets.dtype)
+                    start_cn[items + 1],
+                    _vtk_to_meshio_order(types[start], sz, dtype=offsets.dtype) - sz,
                 )
                 cells.append(CellBlock(meshio_type + str(sz), connectivity[indices]))
                 # Store cell data for this set of cells
@@ -81,7 +89,8 @@ def _cells_from_data(connectivity, offsets, types, cell_data_raw):
             # Same number of nodes per cell
             n = num_nodes_per_cell[meshio_type]
             indices = numpy.add.outer(
-                offsets[start:end], numpy.arange(-n, 0, dtype=offsets.dtype)
+                offsets[start:end],
+                _vtk_to_meshio_order(types[start], n, dtype=offsets.dtype) - n,
             )
             cells.append(CellBlock(meshio_type, connectivity[indices]))
             for name, d in cell_data_raw.items():
@@ -137,7 +146,7 @@ def get_grid(root):
 
 
 def _parse_raw_binary(filename):
-    import xml.etree.ElementTree as ET
+    from xml.etree import ElementTree as ET
 
     with open(filename, "rb") as f:
         raw = f.read()
@@ -162,10 +171,6 @@ def _parse_raw_binary(filename):
 
     appended_data_tag = root.find("AppendedData")
     appended_data_tag.set("encoding", "base64")
-    try:
-        import lzma
-    except Exception:
-        print("Module lzma not available.")
 
     if "compressor" in root.attrib:
         c = {"vtkLZMADataCompressor": lzma, "vtkZLibDataCompressor": zlib}[
@@ -240,7 +245,7 @@ class VtuReader:
     """
 
     def __init__(self, filename):  # noqa: C901
-        import xml.etree.ElementTree as ET
+        from xml.etree import ElementTree as ET
 
         parser = ET.XMLParser()
         try:
@@ -366,9 +371,7 @@ class VtuReader:
         if len(cell_data_raw) != len(cells):
             raise ReadError()
 
-        point_offsets = (
-            numpy.cumsum([pts.shape[0] for pts in points]) - points[0].shape[0]
-        )
+        point_offsets = numpy.cumsum([0] + [pts.shape[0] for pts in points][:-1])
 
         # Now merge across pieces
         if not points:
@@ -663,7 +666,12 @@ def write(filename, mesh, binary=True, compression="zlib", header_type=None):
         cls = ET.SubElement(piece, "Cells")
 
         # create connectivity, offset, type arrays
-        connectivity = numpy.concatenate([v.data.reshape(-1) for v in mesh.cells])
+        connectivity = numpy.concatenate(
+            [
+                v.data[:, _meshio_to_vtk_order(v.type, v.data.shape[1])].reshape(-1)
+                for v in mesh.cells
+            ]
+        )
 
         # offset (points to the first element of the next cell)
         offsets = [

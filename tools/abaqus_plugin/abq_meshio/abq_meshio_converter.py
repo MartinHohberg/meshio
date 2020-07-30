@@ -3,47 +3,48 @@
 
 @author: Constantin Krauß and Nils Meyer
 """
-
 import collections
 from time import time
 
 import numpy as np
 import numpy.linalg as la
 
-import meshio as mo
-
-reload(mo)
-
-CellBlock = collections.namedtuple("CellBlock", ["type", "data"])
-
-in_abq = False
 try:
-    from abaqus import *
+    from abaqus import mdb
     from abaqusConstants import (
-        NODAL,
-        INTEGRATION_POINT,
         CENTROID,
-        VECTOR,
+        DEFORMABLE_BODY,
+        INTEGRATION_POINT,
+        INV3,
+        MAGNITUDE,
+        MAX_PRINCIPAL,
+        MISES,
+        NODAL,
+        PRESS,
         SCALAR,
         TENSOR_3D_FULL,
         TENSOR_3D_PLANAR,
         THREE_D,
-        DEFORMABLE_BODY,
         TIME,
-        MAGNITUDE,
-        MISES,
         TRESCA,
-        PRESS,
-        INV3,
-        MAX_PRINCIPAL,
+        VECTOR,
     )
-    from odbAccess import *
-    from odbMaterial import *
-    from odbSection import *
-
-    in_abq = True
+    from odbAccess import Odb, openOdb
 except ImportError:
     raise SystemError("Functions do only work in Abaqus")
+
+try:
+    from importlib import reload
+except ImportError:
+    # Python 2.X uses reload as a built-in function.
+    pass
+
+import meshio as mo
+
+reload(mo)
+
+
+CellBlock = collections.namedtuple("CellBlock", ["type", "data"])
 
 
 def abaqus_to_meshio_type(element_type):
@@ -233,12 +234,12 @@ def _translate_cells(_cells, _cell_data):
 
 
 def convertMDBtoMeshio(mdbObject, **kwargs):
-    """
+    """Convert Abaqus model database (MDB) to meshio format.
 
     This function converts geometry information stored in Abaqus model database
     (mdb) to a meshio compatible representation.
 
-    Parameters:
+    Parameters
     ----------
     mdbObject : <'Part'> or <'PartInstance'> or <'Assembly'> or <'Model'>
         <'Part'> is defined on mdb.parts, whereas <'PartInstance'> is defined
@@ -249,6 +250,7 @@ def convertMDBtoMeshio(mdbObject, **kwargs):
     -------
     Mesh : meshio Mesh object
         ready to write meshio Mesh objects
+
     """
 
     def convertInstance(mdbInstance, idx_shift=0):
@@ -333,13 +335,12 @@ def convertMDBtoMeshio(mdbObject, **kwargs):
 
 
 def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kwargs):
-    """
-    convertODBtoMeshio(mdbObject, frame, list_of_outputs=None, **kwargs)
+    """Convert Abaqus output database (ODB) to meshio format.
 
     This function converts geometry and result dat information stored in
     Abaqus Outbut database (odb) to a meshio compatible representation.
 
-    Parameters:
+    Parameters
     ----------
     odbObject : <'OdbInstance'> or <'OdbSet'> or <'OdbAssembly'> or <'odb'>
         <'OdbInstance'> is defined on odb.rootAssembly.instances, argument of
@@ -348,11 +349,16 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
         containing several odbInstances and <'odb'> is the entire database
     frame: <'OdbFrame>'
         the frame containing the displacementField of the desire
+    list_of_outputs
+        The desired output properties. (optional, default is empty)
+    deformed : bool
+        Flag for export of deformed geometry (optional, default is True)
 
     Returns
     -------
     Mesh : meshio Mesh object
         ready to write meshio Mesh objects
+
     """
 
     def convertInstance(odbInstance, frame, idx_shift=0, list_of_outputs=None):
@@ -655,7 +661,8 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
 
 
 def convertMeshioToMDB(mesh, partname="test", modelname="Model-1", **kwargs):
-    """
+    """Convert meshio format to Abaqus model databse (MDB).
+
     This function creates a new part in the selected model database from
     the geometry information stored in a meshio Mesh object
 
@@ -674,6 +681,7 @@ def convertMeshioToMDB(mesh, partname="test", modelname="Model-1", **kwargs):
     -------
     Mesh : meshio Mesh object
         ready to write meshio Mesh object
+
     """
     print(
         "Warning: only the geometry of the mesh can be converted to ABAQUS´"
@@ -709,8 +717,9 @@ def convertMeshioToMDB(mesh, partname="test", modelname="Model-1", **kwargs):
     while partname in partnames:
         if i == 0:
             print(
-                "Warning: a part named {} is "
-                / "already in model {}.".format(partname, modelname)
+                "Warning: a part named {} is already in model {}.".format(
+                    partname, modelname
+                )
             )
         partname += "_{}".format(i)
         i += 1
@@ -725,7 +734,23 @@ def convertMeshioToMDB(mesh, partname="test", modelname="Model-1", **kwargs):
 
 
 def convertMeshioToODB(mesh, odbname="test", filename="test.odb", **kwargs):
+    """Convert meshio format to Abaqus output databse (ODB).
 
+    Parameters
+    ----------
+    mesh : meshio mesh
+        Meshio mesh to be converted.
+    odbname : str
+        Name of target ODB.
+    filename : str
+        Name of target ODB file.
+
+    Returns
+    -------
+    odb
+        Abaqus ODB.
+
+    """
     all_points = mesh.points
     n_points = len(all_points)
     all_elements = mesh.cells
@@ -739,9 +764,6 @@ def convertMeshioToODB(mesh, odbname="test", filename="test.odb", **kwargs):
         description="ODB created from Meshio Instance",
         path=filename,
     )
-
-    # add section
-    sCat = odb.SectionCategory(name="S5", description="Five-Layered Shell")
 
     # create part
     odb_part = odb.Part(name="part-1", embeddedSpace=THREE_D, type=DEFORMABLE_BODY)

@@ -287,9 +287,8 @@ def _read_binary(
     cell_data = {}
     for (name, dt) in zip(cell_data_names, dts):
         if isinstance(dt, tuple):
-            buffer_increment, cell_data[name] = _read_binary_list(
-                *([buffer[buffer_position:]] + dt + [num_cells, endianness])
-            )
+            arg_list = [buffer[buffer_position:]] + list(dt) + [num_cells, endianness]
+            buffer_increment, cell_data[name] = _read_binary_list(*arg_list)
         else:
             buffer_increment = numpy.dtype(dt).itemsize
             cell_data[name] = numpy.frombuffer(
@@ -469,7 +468,7 @@ def write(filename, mesh, binary=True):  # noqa: C901
                 # prepend with count
                 temp = [d for d in data.T]
                 out = numpy.rec.fromarrays(
-                    [numpy.broadcast_to(numpy.uint8(data.shape[1]), data.shape[0]),]
+                    [numpy.broadcast_to(numpy.uint8(data.shape[1]), data.shape[0])]
                     + temp
                 )
                 fh.write(out.tobytes())

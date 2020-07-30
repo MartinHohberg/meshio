@@ -1,14 +1,19 @@
 """
 I/O for VTK <https://www.vtk.org/wp-content/uploads/2015/04/file-formats.pdf>.
 """
-import os
 import logging
+import os
 from functools import reduce
 
 import numpy
 
 from ..__about__ import __version__
-from .._common import meshio_to_vtk_type, vtk_to_meshio_type
+from .._common import (
+    _meshio_to_vtk_order,
+    _vtk_to_meshio_order,
+    meshio_to_vtk_type,
+    vtk_to_meshio_type,
+)
 from .._exceptions import ReadError, WriteError
 from .._files import open_file
 from .._helpers import register
@@ -539,8 +544,10 @@ def translate_cells(data, types, cell_data_raw):
         # TODO: cell_data
         for idx, vtk_cell_type in enumerate(types):
             start = offsets[idx] + 1
-            end = start + numnodes[idx]
-            cell = data[start:end]
+            cell_idx = start + _vtk_to_meshio_order(
+                vtk_cell_type, numnodes[idx], offsets.dtype
+            )
+            cell = data[cell_idx]
 
             cell_type = vtk_to_meshio_type[vtk_cell_type]
             if cell_type == "polygon":
@@ -572,7 +579,8 @@ def translate_cells(data, types, cell_data_raw):
         for start, end in zip(b[:-1], b[1:]):
             meshio_type = vtk_to_meshio_type[types[start]]
             n = data[offsets[start]]
-            indices = numpy.add.outer(offsets[start:end], numpy.arange(1, n + 1))
+            cell_idx = 1 + _vtk_to_meshio_order(types[start], n, dtype=offsets.dtype)
+            indices = numpy.add.outer(offsets[start:end], cell_idx)
             cells.append(CellBlock(meshio_type, data[indices]))
             for name, d in cell_data_raw.items():
                 if name not in cell_data:
@@ -656,13 +664,13 @@ def _write_points(f, points, binary):
         points.astype(points.dtype.newbyteorder(">")).tofile(f, sep="")
     else:
         # ascii
-        numpy.savetxt(f, points, delimiter=" ", fmt="%1.4e", newline=SEP)
+        numpy.savetxt(f, points, delimiter=" ", fmt="%1.16e", newline=SEP)
     f.write(BSEP)
 
 
 def _write_cells(f, cells, binary):
     total_num_cells = sum([len(c.data) for c in cells])
-    total_num_idx = sum([numpy.prod(c.data.shape) for c in cells])
+    total_num_idx = sum([c.data.size for c in cells])
     # For each cell, the number of nodes is stored
     total_num_idx += total_num_cells
     f.write(
@@ -671,20 +679,28 @@ def _write_cells(f, cells, binary):
     if binary:
         for c in cells:
             n = c.data.shape[1]
+            cell_idx = _meshio_to_vtk_order(c.type, n)
             dtype = numpy.dtype(">i4")
             # One must force endianness here:
             # <https://github.com/numpy/numpy/issues/15088>
             numpy.column_stack(
-                [numpy.full(c.data.shape[0], n, dtype=dtype), c.data.astype(dtype)],
+                [
+                    numpy.full(c.data.shape[0], n, dtype=dtype),
+                    c.data[:, cell_idx].astype(dtype),
+                ],
             ).astype(dtype).tofile(f, sep="")
         f.write(BSEP)
     else:
         # ascii
         for c in cells:
             n = c.data.shape[1]
+            cell_idx = _meshio_to_vtk_order(c.type, n)
             # prepend a column with the value n
             data = numpy.column_stack(
-                [numpy.full(c.data.shape[0], n, dtype=c.data.dtype), c.data]
+                [
+                    numpy.full(c.data.shape[0], n, dtype=c.data.dtype),
+                    c.data[:, cell_idx],
+                ]
             )
             numpy.savetxt(f, data, delimiter=" ", fmt="%d", newline=SEP)
             f.write(BSEP)
@@ -764,7 +780,7 @@ def _write_vector(f, data, binary):
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e", newline=SEP)
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.16e", newline=SEP)
         f.write(BSEP)
 
 
@@ -786,7 +802,7 @@ def _write_tensor(f, data, binary):
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e", newline=SEP)
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.16e", newline=SEP)
         f.write(BSEP)
 
 
@@ -823,7 +839,7 @@ def _write_field(f, data, binary):
             values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
         else:
             # ascii
-            numpy.savetxt(f, values, delimiter=" ", fmt="%1.4e", newline=SEP)
+            numpy.savetxt(f, values, delimiter=" ", fmt="%1.16e", newline=SEP)
         f.write(BSEP)
 
 
