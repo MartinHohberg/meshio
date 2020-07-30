@@ -406,6 +406,9 @@ class ExportODB(AFXDataDialog):
                 variables.append(var)
 
         tgt = r"".join(self.file_name.getValue())
+        if "." not in tgt:
+            # Probably, the user left out a ending. Let's add ".vtk"
+            tgt = tgt + ".vtk"
 
         sendCommand("import meshio")
         sendCommand("from abq_meshio.abq_meshio_converter " "import convertODBtoMeshio")
@@ -500,6 +503,9 @@ class ExportMDB(AFXDataDialog):
     def export(self, sender, sel, ptr):
         """Process inputs."""
         tgt = r"".join(self.file_name.getValue())
+        if "." not in tgt:
+            # Probably, the user left out a ending. Let's add ".vtk"
+            tgt = tgt + ".vtk"
 
         sendCommand("import meshio")
         sendCommand("from abq_meshio.abq_meshio_converter import convertMDBtoMeshio")
