@@ -18,7 +18,7 @@ FOR /d %%D IN (%root%\*) DO (
 )
 set /a UBound=Index-1
 for /l %%i in (1,1,%UBound%) do (
-  ECHO "Installing Meshio for ABqus version !versions[%%i]!"
+  ECHO "Installing Meshio for Abaqus version !versions[%%i]!"
   SET str=!versions[%%i]!
   SET version=!str:~-4!
 
