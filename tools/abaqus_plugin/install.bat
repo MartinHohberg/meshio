@@ -35,10 +35,10 @@ for /l %%i in (1,1,%UBound%) do (
 	XCOPY %dir%abq_meshio !codedir!\abq_meshio\* /YQ
 
 	:: Download dependency
-	curl https://files.pythonhosted.org/packages/ac/aa/9b065a76b9af472437a0059f77e8f962fe350438b927cb80184c32f075eb/pathlib-1.0.1.tar.gz  -o pathlib-1.0.1.tar.gz
+	curl --silent https://files.pythonhosted.org/packages/ac/aa/9b065a76b9af472437a0059f77e8f962fe350438b927cb80184c32f075eb/pathlib-1.0.1.tar.gz  -o pathlib-1.0.1.tar.gz
 	tar xzf pathlib-1.0.1.tar.gz
 	cd pathlib-1.0.1
-	!python! setup.py install
+	!python! setup.py -q install
 	cd ..
 	@RD /S /Q pathlib-1.0.1
 	DEL pathlib-1.0.1.tar.gz
