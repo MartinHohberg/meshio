@@ -2,7 +2,10 @@ try:
     # Python 3.8
     from importlib import metadata
 except ImportError:
-    import importlib_metadata as metadata
+    try:
+        import importlib_metadata as metadata
+    except ImportError:
+        print("Meshio version cannot be determined for this install.")
 
 try:
     __version__ = metadata.version("meshio")
