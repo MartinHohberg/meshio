@@ -47,13 +47,14 @@ for /l %%i in (1,1,%UBound%) do (
 			https://files.pythonhosted.org/packages/e2/ae/0b037584024c1557e537d25482c306cf6327b5a09b6c4b893579292c1c38/importlib_metadata-1.7.0.tar.gz) DO (
 		curl %%x -o temp.tar.gz
 		tar xzf temp.tar.gz -C dependencies
+		:: Install dependencies
+		FOR /d %%D IN (dependencies\*) DO (
+			cd %%D
+			!python! setup.py install
+			cd ../..
+			@RD /S /Q %%D
+		)
 		DEL temp.tar.gz
-	)
-	:: Install dependencies
-	FOR /d %%D IN (dependencies\*) DO (
-		cd %%D
-		!python! setup.py install
-		cd ../..
 	)
 	@RD /S /Q dependencies
 )
