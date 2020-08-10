@@ -34,13 +34,23 @@ for /l %%i in (1,1,%UBound%) do (
 	XCOPY %dir%\..\..\meshio !codedir!\meshio\* /YQS
 	XCOPY %dir%abq_meshio !codedir!\abq_meshio\* /YQ
 
-	curl https://files.pythonhosted.org/packages/ac/aa/9b065a76b9af472437a0059f77e8f962fe350438b927cb80184c32f075eb/pathlib-1.0.1.tar.gz  -o pathlib-1.0.1.tar.gz
+	:: Install pathlib
+	curl https://files.pythonhosted.org/packages/ac/aa/9b065a76b9af472437a0059f77e8f962fe350438b927cb80184c32f075eb/pathlib-1.0.1.tar.gz -o pathlib-1.0.1.tar.gz
 	tar xzf pathlib-1.0.1.tar.gz
 	cd pathlib-1.0.1
 	!python! setup.py install
 	cd ..
 	@RD /S /Q pathlib-1.0.1
 	DEL pathlib-1.0.1.tar.gz
+
+	:: Install configparser
+	curl https://files.pythonhosted.org/packages/7c/69/c2ce7e91c89dc073eb1aa74c0621c3eefbffe8216b3f9af9d3885265c01c/configparser-3.5.0.tar.gz -o configparser-3.5.0.tar.gz
+	tar xzf configparser-3.5.0.tar.gz
+	cd configparser-3.5.0
+	!python! setup.py install
+	cd ..
+	@RD /S /Q configparser-3.5.0
+	DEL configparser-3.5.0.tar.gz
 
 	:: Install importlib-metadata
 	curl https://files.pythonhosted.org/packages/e2/ae/0b037584024c1557e537d25482c306cf6327b5a09b6c4b893579292c1c38/importlib_metadata-1.7.0.tar.gz -o importlib_metadata-1.7.0.tar.gz
