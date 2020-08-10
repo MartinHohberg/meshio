@@ -724,6 +724,7 @@ def _write_cells(f, cells, binary):
 
 
 def _write_field_data(f, data, binary):
+    scalars = {}
     vectors = {}
     tensors = {}
     fields = {}
@@ -736,7 +737,9 @@ def _write_field_data(f, data, binary):
             values = values.reshape((values.shape[0], -1))
             num_components = values.shape[1]
 
-        if num_components == 3:
+        if num_components == 1:
+            scalars[name] = values
+        elif num_components == 3:
             vectors[name] = values
         elif num_components == 6:
             tensors[name] = numpy.column_stack(
@@ -757,9 +760,34 @@ def _write_field_data(f, data, binary):
         else:
             fields[name] = values
 
+    _write_scalar(f, scalars, binary)
     _write_vector(f, vectors, binary)
     _write_tensor(f, tensors, binary)
     _write_field(f, fields, binary)
+
+
+def _write_scalar(f, data, binary):
+    for name, values in data.items():
+        name.replace(" ", "_")
+
+        f.write(
+            (
+                "SCALARS {} {} {}".format(
+                    name, numpy_to_vtk_dtype[values.dtype.name], SEP
+                )
+            ).encode("utf-8")
+        )
+        f.write("LOOKUP_TABLE default{}".format(SEP).encode("utf-8"))
+        if binary:
+            values.astype(values.dtype.newbyteorder(">")).tofile(f, sep="")
+        else:
+            # ascii
+            if numpy_to_vtk_dtype[values.dtype.name] == "int":
+                fmt = "%d"
+            else:
+                fmt = "%1.16e"
+            numpy.savetxt(f, values, delimiter=" ", fmt=fmt, newline=SEP)
+        f.write(BSEP)
 
 
 def _write_vector(f, data, binary):
