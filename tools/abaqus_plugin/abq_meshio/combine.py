@@ -138,7 +138,10 @@ def _add_to_field(Field, odb, *args):
         position = svals[0].position
         precision = svals[0].precision
         section_point = svals[0].sectionPoint
-        section_number = svals[0].sectionPoint.number
+        if section_point:
+            section_number = svals[0].sectionPoint.number
+        else:
+            section_number = 0
 
         # Check wether they are from same instance
         if not all([instance_name == s.instance.name for s in svals]):
@@ -159,7 +162,8 @@ def _add_to_field(Field, odb, *args):
         if instance_name in data.keys():
             if section_number in data[instance_name].keys():
                 data[instance_name][section_number].append(data_tuple)
-                labels[instance_name][section_number].append(label)
+                if label not in labels[instance_name][section_number]:
+                    labels[instance_name][section_number].append(label)
                 section_points[instance_name][section_number] = section_point
             else:
                 data[instance_name][section_number] = [data_tuple]
@@ -174,10 +178,18 @@ def _add_to_field(Field, odb, *args):
     for instance_name in data.keys():
         instance = odb.rootAssembly.instances[instance_name]
         for section_number in data[instance_name].keys():
-            Field.addData(
-                position=position,
-                instance=instance,
-                labels=labels[instance_name][section_number],
-                data=data[instance_name][section_number],
-                sectionPoint=section_points[instance_name][section_number],
-            )
+            if section_points[instance_name][section_number]:
+                Field.addData(
+                    position=position,
+                    instance=instance,
+                    labels=labels[instance_name][section_number],
+                    data=data[instance_name][section_number],
+                    sectionPoint=section_points[instance_name][section_number],
+                )
+            else:
+                Field.addData(
+                    position=position,
+                    instance=instance,
+                    labels=labels[instance_name][section_number],
+                    data=data[instance_name][section_number],
+                )
