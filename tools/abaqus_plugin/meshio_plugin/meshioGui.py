@@ -295,13 +295,15 @@ class ExportODB(AFXDataDialog):
 
         hf_selectors = FXHorizontalFrame(self)
 
-        gb_instances = FXGroupBox(hf_selectors, "Instance", FRAME_GROOVE)
-        gb_instances_label = FXVerticalFrame(gb_instances, FRAME_THICK)
-        self.instlist = AFXList(
-            gb_instances_label, 10, None, 0, LIST_BROWSESELECT | HSCROLLING_OFF
+        gb_region = FXGroupBox(hf_selectors, "Region", FRAME_GROOVE)
+        gb_region_label = FXVerticalFrame(gb_region, FRAME_THICK)
+        self.regionlist = AFXList(
+            gb_region_label, 10, None, 0, LIST_BROWSESELECT | HSCROLLING_OFF
         )
         for instance in self.odb.rootAssembly.instances.keys():
-            self.instlist.appendItem(instance)
+            self.regionlist.appendItem(instance)
+            for abqset in self.odb.rootAssembly.instances[instance].elementSets.keys():
+                self.regionlist.appendItem("%s : %s" % (instance, abqset))
 
         gb_frames = FXGroupBox(hf_selectors, "Frame", FRAME_GROOVE)
         gb_frames_labels = FXVerticalFrame(gb_frames, FRAME_THICK)
@@ -391,8 +393,8 @@ class ExportODB(AFXDataDialog):
 
     def export(self, sender, sel, ptr):
         """Process inputs."""
-        instance_item = self.instlist.getSingleSelection()
-        inst = self.instlist.getItemText(instance_item)
+        region_item = self.regionlist.getSingleSelection()
+        region = self.regionlist.getItemText(region_item)
 
         frame_item = self.framelist.getSingleSelection()
         substring = self.framelist.getItemText(frame_item).split("(")[0]
@@ -413,10 +415,17 @@ class ExportODB(AFXDataDialog):
         sendCommand("import meshio")
         sendCommand("from abq_meshio.abq_meshio_converter " "import convertODBtoMeshio")
         sendCommand("odb = session.openOdb('%s')" % self.odbFileNameFull)
-        sendCommand("instance = odb.rootAssembly.instances['%s']" % inst)
+        if " : " in region:
+            inst, abqset = region.split(" : ")
+            sendCommand(
+                "region = odb.rootAssembly.instances['%s'].elementSets['%s']"
+                % (inst, abqset)
+            )
+        else:
+            sendCommand("region = odb.rootAssembly.instances['%s']" % region)
         sendCommand("frame = odb.steps['%s'].frames[%d]" % (step, int(frame)))
         sendCommand(
-            "odb_mesh = convertODBtoMeshio(instance, frame,"
+            "odb_mesh = convertODBtoMeshio(region, frame,"
             " list_of_outputs=['%s'], deformed=%s)"
             % ("','".join(variables), str(deformed))
         )
