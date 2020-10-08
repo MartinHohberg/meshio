@@ -10,7 +10,7 @@ import numpy as np
 import numpy.linalg as la
 
 try:
-    from abaqus import mdb
+    from abaqus import mdb, session  # session is acutally needed in eval(...)
     from abaqusConstants import (
         CENTROID,
         DEFORMABLE_BODY,
@@ -383,12 +383,11 @@ def convertODBtoMeshio(odbObject, frame, list_of_outputs=[], deformed=True, **kw
             print("processing " + fO.name)
             # process element data on several integration point
             if isElSet:
-                fO_elem = fO.getSubset(region=eset)
+                fO_elem = fO.getSubset(region=eset, position=CENTROID)
             else:
-                fO_elem = fO
-            # use interpolation to output on centroid, to assert on result per
-            # element
-            fO_elem = fO_elem.getSubset(position=CENTROID)
+                # use interpolation to output on centroid, to assert on result per
+                # element
+                fO_elem = fO.getSubset(position=CENTROID)
             n_el_values = len(fO_elem.values)
             # Use the first section point of cells, if there are multiple integration
             # points
