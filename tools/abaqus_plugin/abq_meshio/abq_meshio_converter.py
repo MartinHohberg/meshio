@@ -127,7 +127,7 @@ ERROR_DIFFERENT_ETYPES = (
 
 def __reshape_TENSOR_3D_FULL(value):
     v = value
-    tens = np.array([v[0], v[3], v[4], v[4], v[1], v[5], v[4], v[5], v[2]])
+    tens = np.array([v[0], v[3], v[4], v[3], v[1], v[5], v[4], v[5], v[2]])
     return tens
 
 
