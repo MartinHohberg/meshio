@@ -10,7 +10,7 @@ import numpy as np
 import numpy.linalg as la
 
 try:
-    from abaqus import mdb, session  # session is acutally needed in eval(...)
+    from abaqus import mdb, session  # noqa session is acutally needed in eval
     from abaqusConstants import (
         CENTROID,
         DEFORMABLE_BODY,
