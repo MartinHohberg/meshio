@@ -243,20 +243,20 @@ def read_pat_buffer(f, scale):
             # EOF
             break
 
-        card_data = line.split()
+        card_data = line[2:].split()
         if line.startswith(" 1"):
             points.append(_read_node(f, scale))
-            point_gids.append(int(card_data[1]))
+            point_gids.append(int(card_data[0]))
         elif line.startswith(" 2"):
             lnodes = _read_cell(f)
-            shape_code = int(card_data[2])
+            shape_code = int(card_data[1])
             key = pat_to_meshio_type[shape_code]
             if key in cells:
                 cells[key].append(lnodes)
-                element_gids[key].append(int(card_data[1]))
+                element_gids[key].append(int(card_data[0]))
             else:
                 cells[key] = [lnodes]
-                element_gids[key] = [int(card_data[1])]
+                element_gids[key] = [int(card_data[0])]
         elif line.startswith(" 4"):
             # do not read cross section properties.
             f.readline()
