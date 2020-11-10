@@ -134,6 +134,8 @@ def write(filename, mesh, file_format=None, **kwargs):
                 raise WriteError()
         elif key in num_nodes_per_cell:
             if value.shape[1] != num_nodes_per_cell[key]:
+                print("%s can't have %d entries" % (key, value.shape[1]))
+                print("It should have %d" % num_nodes_per_cell[key])
                 raise WriteError()
         else:
             # we allow custom keys <https://github.com/nschloe/meshio/issues/501> and
