@@ -336,6 +336,8 @@ class ExportODB(AFXDataDialog):
 
         self.check_deform = FXCheckButton(self, "Export deformed geometry.")
         self.check_deform.setCheck(state=True)
+        self.check_binary = FXCheckButton(self, "Create binary file")
+        self.check_binary.setCheck(state=True)
 
         self.appendActionButton("Export", self, self.ID_CLICKED_APPLY)
         self.appendActionButton(self.DISMISS)
@@ -401,6 +403,7 @@ class ExportODB(AFXDataDialog):
         step, frame = substring.split(": ")
 
         deformed = bool(self.check_deform.getCheck())
+        binary = bool(self.check_binary.getCheck())
 
         variables = []
         for i, var in enumerate(self.variables):
@@ -430,7 +433,7 @@ class ExportODB(AFXDataDialog):
             % ("','".join(variables), str(deformed))
         )
         sendCommand("print(odb_mesh)")
-        sendCommand("meshio.write('%s', odb_mesh, binary=False)" % tgt)
+        sendCommand("meshio.write('%s', odb_mesh, binary=%s)" % (tgt, str(binary)))
         self.form.deactivate()
         return 1
 
