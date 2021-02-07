@@ -287,12 +287,12 @@ def convertMDBtoMeshio(mdbObject, **kwargs):
                 if etype in cells.keys():
                     cells[etype].append(con)
                     cell_data[etype]["ID"] = np.append(
-                        cell_data[etype]["ID"], int(elem.label)
+                        cell_data[etype]["ID"], elem.label
                     )
                 else:
                     # create a new key for a new element set
                     cells[etype] = [con]
-                    cell_data[etype] = {"ID": np.array([int(elem.label)])}
+                    cell_data[etype] = {"ID": np.array([elem.label], dtype=np.int32)}
 
         cells.update((key, np.array(cons)) for key, cons in cells.items())
         return points, cells, cell_data
