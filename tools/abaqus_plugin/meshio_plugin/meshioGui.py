@@ -70,6 +70,7 @@ class CreateSymmTensor(AFXDataDialog):
         self.s4combo = AFXComboBox(self, 0, nvis, "Component 12:")
         self.s5combo = AFXComboBox(self, 0, nvis, "Component 23:")
         self.s6combo = AFXComboBox(self, 0, nvis, "Component 31:")
+        self.framecombo = AFXComboBox(self, 0, nvis, "Frames:")
         for variable in sorted(variables):
             self.s1combo.appendItem(variable)
             self.s2combo.appendItem(variable)
@@ -77,12 +78,16 @@ class CreateSymmTensor(AFXDataDialog):
             self.s4combo.appendItem(variable)
             self.s5combo.appendItem(variable)
             self.s6combo.appendItem(variable)
+        self.framecombo.appendItem('All')
+        self.framecombo.appendItem('First')
+        self.framecombo.appendItem('Last')
         self.s1combo.setMaxVisible(10)
         self.s2combo.setMaxVisible(10)
         self.s3combo.setMaxVisible(10)
         self.s4combo.setMaxVisible(10)
         self.s5combo.setMaxVisible(10)
         self.s6combo.setMaxVisible(10)
+        self.framecombo.setMaxVisible(3)
 
         self.appendActionButton("Create Field", self, self.ID_CLICKED_APPLY)
         self.appendActionButton(self.DISMISS)
@@ -127,6 +132,19 @@ class CreateSymmTensor(AFXDataDialog):
         s5 = self.s5combo.getItemText(item)
         item = self.s6combo.getCurrentItem()
         s6 = self.s6combo.getItemText(item)
+        item = self.framecombo.getCurrentItem()
+        frame_name = self.framecombo.getItemText(item)
+        
+        #translate frame name to frame list
+        if frame_name == "All":
+            frame_list = str([0,-1])
+        elif frame_name == "Last":
+            frame_list = str([-1])
+        elif frame_name == "First":
+            frame_list = str([0])
+        else:
+            sendCommand("print(No valid frame was selected. All frames are concidered.")
+            frame_list = str([0,-1])
 
         sendCommand("from abq_meshio.combine import *")
         cmdstr = (
@@ -148,6 +166,8 @@ class CreateSymmTensor(AFXDataDialog):
             + s5
             + "', '"
             + s6
+            + "', '"
+            + frame_list
             + "')"
         )
         sendCommand(cmdstr)
@@ -336,8 +356,6 @@ class ExportODB(AFXDataDialog):
 
         self.check_deform = FXCheckButton(self, "Export deformed geometry.")
         self.check_deform.setCheck(state=True)
-        self.check_binary = FXCheckButton(self, "Create binary file")
-        self.check_binary.setCheck(state=True)
 
         self.appendActionButton("Export", self, self.ID_CLICKED_APPLY)
         self.appendActionButton(self.DISMISS)
@@ -403,7 +421,6 @@ class ExportODB(AFXDataDialog):
         step, frame = substring.split(": ")
 
         deformed = bool(self.check_deform.getCheck())
-        binary = bool(self.check_binary.getCheck())
 
         variables = []
         for i, var in enumerate(self.variables):
@@ -433,7 +450,7 @@ class ExportODB(AFXDataDialog):
             % ("','".join(variables), str(deformed))
         )
         sendCommand("print(odb_mesh)")
-        sendCommand("meshio.write('%s', odb_mesh, binary=%s)" % (tgt, str(binary)))
+        sendCommand("meshio.write('%s', odb_mesh, binary=False)" % tgt)
         self.form.deactivate()
         return 1
 

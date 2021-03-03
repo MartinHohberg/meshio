@@ -12,7 +12,7 @@ from abaqusConstants import (
 )
 
 
-def tensor(odb_name, field_name, desc, s1, s2, s3, s4, s5, s6):
+def tensor(odb_name, field_name, desc, s1, s2, s3, s4, s5, s6, frame_list):
     """Build a tensor.
 
     Parameters
@@ -35,6 +35,8 @@ def tensor(odb_name, field_name, desc, s1, s2, s3, s4, s5, s6):
         Name of 23 component.
     s6 : str
         Name of 13 component.
+    frame_list : str
+        Name with frames
 
     """
     # close ODB and open with write permissions
@@ -46,26 +48,44 @@ def tensor(odb_name, field_name, desc, s1, s2, s3, s4, s5, s6):
 
     # for each step
     for stepName in odb.steps.keys():
-        # for each frame
+        # transfer frame_list string to array
+        frame_list_new = frame_list[1:-1].split(',')
         N = len(odb.steps[stepName].frames)
+        
+        if len(frame_list_new) == 1:
+            if int(frame_list_new[0]) == -1:
+                frame_list_new[0] = N - 1
+            reference_frames = [frame_list_new[0]]
+            field_name = field_name + "_Frame_" + str(frame_list_new[0])
+        else:
+            if int(frame_list_new[1]) == -1:
+                frame_list_new[1] = N - 1
+            reference_frames = list(range(int(frame_list_new[0]),
+                    (int(frame_list_new[1])-int(frame_list_new[0]))))
+                    
+            field_name = (field_name + "_Frames_" + str(frame_list_new[0]) + 
+                           "_to_" + str(frame_list_new[1]) + "_")
+        N = len(reference_frames)
+        # for preselected frames
         for i, frame in enumerate(odb.steps[stepName].frames):
-            milestone("Adding field to frames in step %s" % stepName, "Frame", i, N)
-            sv1 = frame.fieldOutputs[s1]
-            sv2 = frame.fieldOutputs[s2]
-            sv3 = frame.fieldOutputs[s3]
-            sv4 = frame.fieldOutputs[s4]
-            sv5 = frame.fieldOutputs[s6]  # different order in ODB (WTF ABQ?!)
-            sv6 = frame.fieldOutputs[s5]  # different order in ODB (WTF ABQ?!)
-
-            # create empty field output
-            Field = frame.FieldOutput(
-                name=field_name,
-                description=desc,
-                type=TENSOR_3D_FULL,
-                validInvariants=invariants,
-            )
-
-            _add_to_field(Field, odb, sv1, sv2, sv3, sv4, sv5, sv6)
+            if i in reference_frames:
+                milestone("Adding field to frames in step %s" % stepName, "Frame", i, N)
+                sv1 = frame.fieldOutputs[s1]
+                sv2 = frame.fieldOutputs[s2]
+                sv3 = frame.fieldOutputs[s3]
+                sv4 = frame.fieldOutputs[s4]
+                sv5 = frame.fieldOutputs[s6]  # different order in ODB (WTF ABQ?!)
+                sv6 = frame.fieldOutputs[s5]  # different order in ODB (WTF ABQ?!)
+    
+                # create empty field output
+                Field = frame.FieldOutput(
+                    name=field_name,
+                    description=desc,
+                    type=TENSOR_3D_FULL,
+                    validInvariants=invariants,
+                )
+    
+                _add_to_field(Field, odb, sv1, sv2, sv3, sv4, sv5, sv6)
 
     odb.save()
     odb.close()
